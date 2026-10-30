@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>手账</title><link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#review"><span class="brand-mark" aria-hidden="true"></span><span id="brand-title">手账</span></a>
+    <nav aria-label="主导航"><button data-view="review">回看</button><button data-view="calendar">日历</button><button data-view="plans">计划</button></nav>
+    <button id="share-button" class="quiet">导出分享图</button>
+  </header>
+  <main id="main">
+    <p class="scope" id="scope"></p>
+    <section id="review" aria-label="个人回看"><div id="spread"></div><div class="pager" id="pager"></div></section>
+    <section id="calendar" aria-label="日历档案" hidden>
+      <div class="section-heading"><div><p class="eyebrow">把日子翻回来</p><h1>日历档案</h1></div><div class="search-controls"><label class="search-label">搜索全部记录<input id="search" type="search" placeholder="搜一个词，找回那一天"></label><label id="category-label" hidden>品类<select id="category"><option value="all">全部品类</option></select></label></div></div>
+      <div class="calendar-layout"><div class="calendar-sheet">
+        <div class="month-toolbar"><button id="previous-month" aria-label="上个月">←</button><div class="month-inputs"><label>年份<select id="year"></select></label><label>月份<select id="month"></select></label></div><button id="next-month" aria-label="下个月">→</button></div>
+        <div id="months-strip" class="months-strip" aria-label="当年月份"></div>
+        <p id="month-note" class="muted"></p><div class="weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+        <div id="days" class="days"></div><p class="calendar-legend">有图日期显示真实缩略图；数字为已收录条数。空格不代表未读日期没有记录。</p>
+      </div><aside id="day-detail" class="day-detail" aria-live="polite"></aside></div>
+      <div id="search-results" hidden></div>
+    </section>
+    <section id="plans" aria-label="后续计划" hidden>
+      <div class="section-heading"><div><p class="eyebrow">从留下的记录，往前走一点</p><h1 id="plan-heading">接下来的小事</h1></div><button id="add-plan">新建计划</button></div>
+      <p class="plan-intro">下面是根据已有记录整理的建议，不代表你已经答应要做。可以直接修改、完成或删除。</p>
+      <div class="plan-toolbar"><label>查看月份<select id="plan-month"><option value="all">全部月份</option></select></label><button id="export-plans" class="quiet">备份计划</button><label class="file-button">合并导入<input id="import-plans" type="file" accept="application/json,.json"></label><button id="restore-plans" class="quiet">恢复合并前版本</button></div>
+      <div id="plan-list"></div><p class="muted" id="storage-note"></p>
+    </section>
+    <details class="coverage-panel"><summary>查看数据范围与缺口</summary><div id="coverage"></div></details>
+  </main>
+  <dialog id="modal"><div class="modal-top"><h2 id="modal-title"></h2><button id="close-modal" aria-label="关闭弹窗">×</button></div><div id="modal-content"></div></dialog>
+  <p id="notice" role="status" hidden></p>
+  <script src="journal-data.js"></script><script src="core.js"></script><script src="app.js"></script>
+</body></html>

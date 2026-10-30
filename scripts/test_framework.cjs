@@ -1,0 +1,12 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const context={module:{exports:{}}};
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../assets/starter/core.js'),'utf8'),context);
+const C=context.module.exports;
+test('Beijing date handles UTC and offsets',()=>{assert.equal(C.dateKey('2025-01-01T20:00:00Z'),'2025-01-02');assert.equal(C.dateKey('2025-01-01T23:00:00+08:00'),'2025-01-01');});
+test('leap year, Monday offset and last day',()=>{const days=C.monthDays(2024,2);assert.equal(days.filter(Boolean).length,29);assert.equal(days[0],null);assert.equal(days[3],'2024-02-01');assert.equal(days.at(-1),'2024-02-29');assert.equal(C.monthDays(2026,6)[0],'2026-06-01');});
+test('merge keeps manual edits and avoids duplicate new IDs',()=>{const a=[{id:'a',title:'manual'}],b=[{id:'a',title:'old'},{id:'b',title:'new'},{id:'b',title:'twice'}];assert.deepEqual(JSON.parse(JSON.stringify(C.mergePlans(a,b))),[{id:'a',title:'manual'},{id:'b',title:'new'}]);assert.equal(a.length,1);});
+test('plan schema rejects malformed imports',()=>{assert.equal(C.validPlans([{id:'a',title:'x',month:'2027-01',done:false}]),true);for(const v of [null,{},[{id:'a',title:'x',month:'2027-13',done:false}],[{id:'a',title:'x',month:'2027-01',done:'false'}]])assert.equal(C.validPlans(v),false);});
+test('selected, unread, failed are not empty',()=>{for(const status of ['selected','unread','failed','partial'])assert.notEqual(C.scopeStatus('2025-01-01',[{year:2025,status}]),C.scopeStatus('2025-01-01',[{year:2025,status:'empty'}]));});
+test('search spans all dates and categories',()=>{const r=[{id:'1',date:'2020-01-01',title:'book',text:'old',category:'A'},{id:'2',date:'2026-10-01',title:'cat',text:'new',category:'B'}];assert.equal(C.search(r,'old')[0].id,'1');assert.equal(C.search(r,'','B')[0].id,'2');});

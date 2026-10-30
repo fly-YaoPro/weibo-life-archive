@@ -12,7 +12,24 @@
   <a href="https://github.com/fly-YaoPro/weibo-life-archive/archive/refs/heads/main.zip">下载完整包</a>
 </p>
 
-> 这是给 Agent 使用的一套指令、参考图和本地检查工具，不是安装即运行的网站或现成爬虫。下方图片是 **AI 生成的虚构设计示意**，不是用户数据或端到端实测截图。
+> 这套 Agent Skill 现在包含 **可运行的离线页面框架**：纸质 / 磨砂双风格、紧凑日历、数据驱动的回顾与计划。不自带账号数据或现成爬虫。下方参考图仍是 **AI 生成的虚构设计示意**，不冒充真实运行截图。
+
+## 已有数据，直接换新版页面
+
+```text
+使用最新版 Skill，保留已经采集的记录、真实图片和手动计划，不要重新抓取。
+按包内页面框架重做回看、日历和计划。先从真实记录生成具体回顾与计划建议，
+再构建页面；检查桌面、手机没有遮挡，计划不能是空的。
+```
+
+框架的使用方式和 `story.json` 内容字段见 [页面框架说明](references/implementation.md)。支持 Python 3.9+ 标准库构建，无 npm 安装步骤：
+
+```bash
+python scripts/build_journal.py --source "已有数据副本" --output "新版手账" --skin paper
+# 或 --skin frosted；输出必须是新目录，原始数据不覆盖
+```
+
+Agent 需要先根据记录完善标题、短回顾、真实选图、节点和 `story.plans`，构建器不替用户编经历。日历默认打开有记录月份，格内展示真实图/短标题和条数；计划首次打开已有可编辑建议，不只给一个空新增按钮。旧页手动计划先导出，再在新版合并。
 
 ## 做出来是什么
 
@@ -122,8 +139,9 @@ SKILL.md          Agent 入口
 agents/           可选的客户端展示信息
 references/       采集、数据格式、内容、视觉与验收规则
 assets/cases/     虚构视觉参考图
+assets/starter/   可运行的双风格离线网页框架
 assets/provenance.json  参考图说明与校验值
-scripts/          本地结构检查与合成数据测试
+scripts/          构建器、结构检查与合成数据测试
 ```
 
 ## 隐私与发布边界
