@@ -16,7 +16,7 @@
 
 ## 功能实测
 
-新版先按 [页面框架说明](implementation.md) 构建。额外跑 `node --test scripts/test_framework.cjs` 与 `python -B scripts/test_build_journal.py`。这两项通过仍不等于真实账号端到端或视觉通过。
+页面制作按 [页面框架说明](implementation.md) 构建。额外跑 `node --test scripts/test_framework.cjs` 与 `python -B scripts/test_build_journal.py`。这两项通过仍不等于真实账号端到端或视觉通过。
 
 - 计划首次打开已有根据记录生成的具体建议，而非空白新增表单；每条有来源，月份可修改。
 - 日历默认实际有记录的月份，缩略图或短标题出现在对应日期；空月份不填假记录。1440×900、390×844均检查，无横向溢出、固定控件遮挡或装订空场。

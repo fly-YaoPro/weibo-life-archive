@@ -32,7 +32,7 @@
 
 ## 本地状态和导入
 
-新版页面另用 `journal-data.js` 作为运行时展示数据，构建器生成，原始 `records.json` 不改写；完整内容准备、`story.plans`、节点和图片选择字段见 [页面框架说明](implementation.md)。`data.js` 保留同源规范数据，不让页面临时拼错字段。既有手动计划先从旧网页导出，再适配/合并，不假设跨路径 localStorage 自动共享。
+页面框架使用构建器生成的 `journal-data.js` 作为运行时展示数据；`records.json` 保存规范化的采集或导入记录。内容准备、`story.plans`、节点和图片选择字段见 [页面框架说明](implementation.md)。`data.js` 保留同源规范数据。仅在迁移既有项目时，先导出手动计划再适配/合并，不假设跨路径 localStorage 自动共享。
 
 用localStorage保存排序、阅读位置和计划；考虑file://不同浏览器行为，必须实测，失败提供可下载JSON备份/导入，不承诺跨浏览器或跨电脑自动保留。导入按ID合并，冲突先保留当前手动版本，操作前生成可下载备份，有明确恢复入口。不要直接覆盖整个localStorage或清空用户记录。
 
