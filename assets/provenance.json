@@ -1,0 +1,16 @@
+{
+  "type": "synthetic-ui-style-reference",
+  "created_with": "OpenAI image_gen built-in tool",
+  "synthetic": true,
+  "persona": "阿澄，虚构的插画爱好者；生活片段、人物、图像和日期均为演示",
+  "purpose": "仅供观察配色、材质、构图和层级，不是平台记录、用户照片或功能实测截图",
+  "runtime_rule": "实际手账必须使用真实平台图片或用户授权真实资料；禁止使用这些生成图片替代证据图片",
+  "images": [
+    {"path": "cases/paper-overview.png", "sha256": "4bee36417a39004a8738e093683a6bc0a836044d9673850098be76ffccb93b69"},
+    {"path": "cases/paper-desktop.png", "sha256": "08eb10ec3c372e3a133e09c42df63556948b81a7b0876281fd6fbdbe5895af65"},
+    {"path": "cases/paper-reading.png", "sha256": "36ce71b6acf489cffd42f4b6f73a4b8847c518e98af348fdbdf8b2d875118dc5"},
+    {"path": "cases/frosted-overview.png", "sha256": "e79c995f3359321b86cf693cf411b432bd8333b42353388117d8c6de8f517e53"},
+    {"path": "cases/frosted-calendar.png", "sha256": "a1d13adbde565590473bb7fefcf5878fad8aecd16ac2da3fcd17d536034525c6"},
+    {"path": "cases/frosted-plan.png", "sha256": "340df4a869d1da3bbe8bbfd67dad52cf67efed89077d8283cf19366d1f62cc90"}
+  ]
+}

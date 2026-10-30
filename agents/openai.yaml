@@ -1,0 +1,4 @@
+interface:
+  display_name: "微博人生手账"
+  short_description: "归档微博十年记录并生成可离线翻阅的个人手账与日历和后续计划"
+  default_prompt: "使用 $weibo-life-archive，按我提供的微博主页和真实平台图片制作可离线回看的个人手账。"
