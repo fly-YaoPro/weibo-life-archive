@@ -19,7 +19,7 @@ def fixture(root,kind):
     put(root,'project_meta.json',meta)
     put(root,'coverage.json',[{'year':2026,'status':'selected','scanned_count':None,'saved_count':1,'selected_count':1}])
     if kind=='weibo':
-        records=[{'id':'sample-post','author_uid':'sample-user','created_at':'2026-10-01T12:00:00+08:00','text':'合成离线夹具，不是真实微博。','url':'https://weibo.com/sample-post','selected':True,'images':[]}]
+        records=[{'id':'sample-post','author_uid':'sample-user','created_at':'2026-10-01T12:00:00+08:00','text':'合成离线夹具，不是真实微博。','url':'https://weibo.com/sample-post','selected':True,'images':[], 'expected_image_count':0, 'image_inventory_status':'complete', 'image_count_basis':'synthetic fixture confirms no pictures'}]
     else:
         records=[{'order_id':'sample-order','placed_at':'2026-10-01T12:00:00+08:00','raw_status':'交易成功','is_success':True,'currency':'CNY','paid_amount':'10.00','refund_amount':None,'amount_basis':'original_paid','url':'https://buyertrade.taobao.com/','items':[{'item_id':'a','name':'合成商品A','quantity':1,'image_path':None,'image_status':'unavailable'},{'item_id':'b','name':'合成商品B','quantity':2,'image_path':None,'image_status':'unavailable'}]}]
     name='records.json' if kind=='weibo' else 'orders.json';put(root,name,records)
@@ -50,10 +50,10 @@ class Checks(unittest.TestCase):
     def test_synthetic_product_image_rejected(self):
         def mutate(r,n,x):x[0]['items'][0]['origin']='cartoon';put(r,n,x)
         self.run_case('taobao',mutate,False)
-    def test_platform_image_origin(self):
+    def test_platform_image_origin_does_not_excuse_missing_download(self):
         def mutate(r,n,x):
             x[0]['images']=[{'origin':'platform','source_url':'https://example.org/fixture-image.jpg','download_status':'unavailable','thumb_path':None,'large_path':None}];put(r,n,x)
-        self.run_case('weibo',mutate,True)
+        self.run_case('weibo',mutate,False)
     def test_duplicate(self):self.run_case('weibo',lambda r,n,x:put(r,n,x+x),False)
     def test_numeric_id(self):
         def mutate(r,n,x):x[0]['id']=123;put(r,n,x)

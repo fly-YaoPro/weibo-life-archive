@@ -7,6 +7,7 @@ import re
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from audit_images import audit as audit_images
 
 
 def load(path):
@@ -76,6 +77,11 @@ def prepare(root, skin):
     kind = meta["platform"]
     if kind not in {"weibo", "taobao"} or (kind == "taobao" and skin != "collage") or (kind == "weibo" and skin == "collage"):
         raise ValueError("微博使用 paper/frosted；淘宝使用 collage")
+    image_audit = None
+    if kind == "weibo":
+        image_audit = audit_images(root, meta)
+        if not image_audit["ok"]:
+            raise ValueError("图片未齐，不能构建完成版：" + "; ".join(image_audit["errors"][:5]) + "；运行 audit_images.py 查看逐条缺口并补图")
     rows = normalize(root, meta, kind)
     by_id = {r["id"]: r for r in rows}
     def refs(value):
@@ -133,6 +139,8 @@ def prepare(root, skin):
             r, im = allowed[path]
             caption = section.get("image_captions", {}).get(path) or im["caption"] or r["title"]
             section["images"].append({**im, "date": r["date"], "record_id": r["id"], "caption": caption})
+    if kind == "weibo" and any(r["images"] for r in rows) and not any(s["images"] for s in [overview] + themes):
+        raise ValueError("已下载真实图片，但回看页面全部无图；先按图文重选来源与页面图片，不能只藏在日历")
     actual = {"start": rows[0]["date"], "end": rows[-1]["date"]}
     meta["actual_range"] = actual
     meta["plan_year"] = int(meta.get("plan_year") or datetime.now().year + 1)
@@ -144,7 +152,7 @@ def prepare(root, skin):
     identity = str(meta.get("project_id") or meta.get("target", {}).get("uid") or rows[0]["id"])
     project_key = hashlib.sha256((kind + ":" + identity).encode()).hexdigest()[:16]
     return {"version": 2, "project_key": project_key, "skin": skin, "meta": meta, "story": story,
-            "coverage": coverage, "records": rows, "scope": scope}
+            "coverage": coverage, "records": rows, "scope": scope, "image_audit": image_audit}
 
 
 def build(source, output, skin, template=None):
@@ -158,8 +166,11 @@ def build(source, output, skin, template=None):
     output.mkdir(parents=True, exist_ok=True)
     for filename in ("index.html", "styles.css", "app.js", "core.js"):
         shutil.copyfile(template / filename, output / filename)
-    js = "window.JOURNAL_DATA = " + json.dumps(data, ensure_ascii=False).replace("<", "\\u003c") + ";\n"
+    runtime = {key: value for key, value in data.items() if key != "image_audit"}
+    js = "window.JOURNAL_DATA = " + json.dumps(runtime, ensure_ascii=False).replace("<", "\\u003c") + ";\n"
     (output / "journal-data.js").write_text(js, encoding="utf-8")
+    if data["image_audit"] is not None:
+        (output / "image-audit.json").write_text(json.dumps(data["image_audit"], ensure_ascii=False, indent=2), encoding="utf-8")
     paths = {im[k] for r in data["records"] for im in r["images"] for k in ("path", "large")}
     for name in paths:
         target = output / name

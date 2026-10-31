@@ -15,7 +15,7 @@ def fixture(root, kind="weibo"):
     write(root, "project_meta.json", {"schema_version": 1, "platform": kind, "title": "虚构测试示例", "mode": "selected", "timezone": "Asia/Shanghai", "requested_range": {"start": "2016-01-01", "end": "2026-10-30"}, "plan_year": 2027, "target": {"uid": "synthetic"}})
     write(root, "coverage.json", [{"year": 2025, "status": "selected", "note": "虚构测试，不是真实账号"}])
     if kind == "weibo":
-        records = [{"id": "demo-1", "created_at": "2025-05-19T12:00:00+08:00", "text": "窗台的薄荷又长了一片叶子。", "images": [], "url": ""}]
+        records = [{"id": "demo-1", "created_at": "2025-05-19T12:00:00+08:00", "text": "窗台的薄荷又长了一片叶子。", "images": [], "url": "", "expected_image_count": 0, "image_inventory_status": "complete", "image_count_basis": "synthetic fixture confirms no pictures"}]
         write(root, "records.json", records)
     else:
         write(root, "orders.json", [{"order_id": "demo-1", "placed_at": "2025-05-19T12:00:00+08:00", "is_success": True, "items": [{"item_id": "item-1", "name": "虚构测试花盆", "image_path": None}]}])

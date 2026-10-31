@@ -22,5 +22,6 @@ orders.js
 images/
 exports/
 progress.json
+image-audit.json
 journal-data.js
 *计划备份*.json

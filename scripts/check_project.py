@@ -8,6 +8,7 @@ from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import urlsplit
+from audit_images import audit as audit_images
 
 TITLES={'weibo':'人生手账','taobao':'消费手账'}
 STATUSES={'complete','partial','selected','unread','failed','empty'}
@@ -147,6 +148,11 @@ def check(root,kind,stage='data'):
                 image_count+=1
     if meta.get('mode')=='full':warnings.append('Full is the requested mode; completion still requires coverage/source verification')
     if unknown_amounts:warnings.append(f'{unknown_amounts} orders have unknown paid amount; do not treat as zero')
+    image_audit=None
+    if kind=='weibo':
+        image_audit=audit_images(root,meta,records)
+        errors.extend('image audit: '+message for message in image_audit['errors'])
+        warnings.extend('image audit: '+message for message in image_audit['warnings'])
     if stage=='final':
         story=load('story.json');private_keys(story,'story')
         if not isinstance(story,dict):err('story.json: expected object');story={}
@@ -183,7 +189,7 @@ def check(root,kind,stage='data'):
     for p in root.rglob('*'):
         if p.name.lower() in ('.env','.wbprofile','storage-state.json','cookies.json','login-state.json'):
             err('Credential/profile-like file or directory present in deliverable');break
-    return {'ok':not errors,'kind':kind,'stage':stage,'records':len(records),'unique_source_ids':len(seen),'images':image_count,'errors':errors,'warnings':warnings}
+    return {'ok':not errors,'kind':kind,'stage':stage,'records':len(records),'unique_source_ids':len(seen),'images':image_count,'image_audit':image_audit,'errors':errors,'warnings':warnings}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
