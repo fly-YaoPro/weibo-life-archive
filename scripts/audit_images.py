@@ -16,7 +16,7 @@ def load(path):
 
 def image_info(path):
     """Check raster container structure, not semantic provenance or full decoding."""
-    data = path.read_bytes()
+    data = bytes(path) if isinstance(path, (bytes, bytearray)) else path.read_bytes()
     width = height = 0
     fmt = ""
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
@@ -160,6 +160,12 @@ def audit(root, meta=None, records=None):
                         raise ValueError()
                 except (ValueError, TypeError):
                     errors.append(item + ": missing safe platform image URL")
+            elif (image.get('origin') == 'synthetic_fixture' and
+                  meta.get('fixture', {}).get('synthetic') is True and
+                  '合成' in str(meta.get('fixture', {}).get('label', '')) and
+                  meta.get('fixture', {}).get('source') and '合成' in str(meta.get('title', '')) and
+                  image.get('provided_reference')):
+                pass  # Explicitly labeled functional fixtures; never real collection proof.
             elif image.get("origin") != "user_provided" or not image.get("provided_reference"):
                 errors.append(item + ": real image provenance is required")
             if image.get("download_status") != "saved":

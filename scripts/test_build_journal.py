@@ -3,6 +3,8 @@ import copy
 import json
 import tempfile
 import unittest
+import subprocess
+import sys
 from pathlib import Path
 from build_journal import build, prepare, local_file, day
 
@@ -12,10 +14,10 @@ def write(root, name, value):
 
 
 def fixture(root, kind="weibo"):
-    write(root, "project_meta.json", {"schema_version": 1, "platform": kind, "title": "虚构测试示例", "mode": "selected", "timezone": "Asia/Shanghai", "requested_range": {"start": "2016-01-01", "end": "2026-10-30"}, "plan_year": 2027, "target": {"uid": "synthetic"}})
+    write(root, "project_meta.json", {"schema_version": 1, "platform": kind, "title": "合成测试示例", "fixture":{"synthetic":True,"label":"合成离线测试","source":"test_build_journal.py explicit synthetic fixture"}, "mode": "selected", "timezone": "Asia/Shanghai", "requested_range": {"start": "2016-01-01", "end": "2026-10-30"}, "plan_year": 2027, "target": {"uid": "synthetic"}})
     write(root, "coverage.json", [{"year": 2025, "status": "selected", "note": "虚构测试，不是真实账号"}])
     if kind == "weibo":
-        records = [{"id": "demo-1", "created_at": "2025-05-19T12:00:00+08:00", "text": "窗台的薄荷又长了一片叶子。", "images": [], "url": "", "expected_image_count": 0, "image_inventory_status": "complete", "image_count_basis": "synthetic fixture confirms no pictures"}]
+        records = [{"id": "demo-1", "created_at": "2025-05-19T12:00:00+08:00", "text": "窗台的薄荷又长了一片叶子。", "images": [], "url": "", "expected_image_count":0, "image_inventory_status":"complete", "image_count_basis":"Explicit synthetic fixture contains no photos"}]
         write(root, "records.json", records)
     else:
         write(root, "orders.json", [{"order_id": "demo-1", "placed_at": "2025-05-19T12:00:00+08:00", "is_success": True, "items": [{"item_id": "item-1", "name": "虚构测试花盆", "image_path": None}]}])
@@ -54,6 +56,20 @@ class BuilderTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             prepare(self.root, "paper")
 
+    def test_readonly_wishes_do_not_need_due_dates(self):
+        self.mutate(lambda s:s.update(plans=[],wishes=[{"id":"w1","title":"再翻一页旧书","text":"给喜欢的事留一点时间。","source_ids":["demo-1"]}]))
+        with self.assertRaisesRegex(ValueError,"plans"):prepare(self.root,"paper")
+    def test_unknown_wish_source_is_blocked(self):
+        self.mutate(lambda s:s.update(wishes=[{"id":"w1","title":"小愿望","text":"短记","source_ids":["missing"]}]))
+        with self.assertRaises(ValueError):prepare(self.root,"paper")
+    def test_cover_portrait_requires_real_evidence(self):
+        self.mutate(lambda s:s['overview'].update(opening='开场白',portrait={'text':'有据的日常解析','source_ids':['missing']}))
+        with self.assertRaises(ValueError):prepare(self.root,'paper')
+    def test_required_cover_blocks_missing_editorial_content(self):
+        meta=json.loads((self.root/'project_meta.json').read_text());meta['presentation']={'cover_required':True};write(self.root,'project_meta.json',meta)
+        with self.assertRaises(ValueError):prepare(self.root,'paper')
+        self.mutate(lambda s:s['overview'].update(opening='翻开这些日子。',portrait={'text':'这些记录里出现了窗台的新叶。','source_ids':['demo-1']}))
+        self.assertTrue(prepare(self.root,'paper')['story']['overview']['portrait'])
     def test_unknown_source_blocked(self):
         self.mutate(lambda s: s["plans"][0].update(source_ids=["not-real"]))
         with self.assertRaises(ValueError):
@@ -63,6 +79,66 @@ class BuilderTests(unittest.TestCase):
         self.mutate(lambda s: s["themes"][0].update(excerpt="这是凭空编写的原话"))
         with self.assertRaises(ValueError):
             prepare(self.root, "paper")
+
+    def test_duplicate_review_pages_rejected_before_any_output_written(self):
+        def duplicate(story):
+            theme = copy.deepcopy(story["themes"][0]); theme["id"] = "t2"
+            story["themes"].append(theme)
+        self.mutate(duplicate)
+        output = Path(self.temp.name) / "duplicate"
+        with self.assertRaisesRegex(ValueError, "摘句重复|正文重复"):
+            build(self.root, output, "paper")
+        self.assertFalse(output.exists())
+
+    def test_strict_editorial_ids_alone_cannot_pass(self):
+        meta = json.loads((self.root / "project_meta.json").read_text())
+        meta["presentation"] = {"grounding_required": True}
+        write(self.root, "project_meta.json", meta)
+        with self.assertRaisesRegex(ValueError, "锚点"):
+            prepare(self.root, "paper")
+
+    def test_video_cover_remains_separate_and_is_copied(self):
+        from test_pipeline import png
+        (self.root / "images").mkdir()
+        (self.root / "images/cover.png").write_bytes(png())
+        records = json.loads((self.root / "records.json").read_text())
+        records[0]['url']='https://example.invalid/synthetic-video'
+        records[0].update(is_video=True, video={"source_url": records[0]["url"], "cover_status": "observed", "covers": [
+            {"origin": "platform", "source_url": "https://example.org/synthetic-cover.png", "download_status": "saved", "thumb_path": "images/cover.png", "large_path": "images/cover.png"}]})
+        write(self.root, "records.json", records)
+        self.mutate(lambda story:story['themes'][0].update(image_paths=['images/cover.png']))
+        data = prepare(self.root, "paper")
+        self.assertEqual(data["records"][0]["images"], [])
+        self.assertEqual(data["records"][0]["video"]["covers"][0]["path"], "images/cover.png")
+        self.assertEqual(data["story"]["themes"][0]["images"][0]["media_kind"], "video-cover")
+        output = Path(self.temp.name) / "video"
+        build(self.root, output, "paper")
+        self.assertEqual((output / "images/cover.png").read_bytes(), (self.root / "images/cover.png").read_bytes())
+        from pack_html import pack, verify_packed
+        packed = Path(self.temp.name) / "video.html"
+        pack(output, packed)
+        self.assertTrue(verify_packed(packed)["ok"])
+        self.assertIn('"images/cover.png": "data:', packed.read_text())
+
+    def test_missing_video_cover_is_honest_and_does_not_drop_post(self):
+        records = json.loads((self.root / "records.json").read_text())
+        records[0]['url']='https://example.invalid/synthetic-video'
+        records[0].update(is_video=True, video={"source_url": records[0]["url"], "cover_status": "unavailable", "covers": []})
+        write(self.root, "records.json", records)
+        self.assertEqual(len(prepare(self.root, "paper")["records"]), 1)
+        records[0]["video"]["source_url"] = "https://example.org/unrelated"
+        write(self.root, "records.json", records)
+        with self.assertRaisesRegex(ValueError, "同一原帖"):
+            prepare(self.root, "paper")
+
+    def test_template_is_exposed_in_cli_and_overlap_is_rejected(self):
+        template = Path(__file__).resolve().parents[1] / "assets/starter"
+        output = Path(self.temp.name) / "custom-template"
+        result = subprocess.run([sys.executable, str(Path(__file__).with_name("build_journal.py")), "--source", str(self.root), "--output", str(output), "--skin", "paper", "--template", str(template)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((output / "index.html").is_file())
+        with self.assertRaisesRegex(ValueError, "模板"):
+            build(self.root, template / "nested-test", "paper", template)
 
     def test_nonempty_target_and_nested_blocked(self):
         out = Path(self.temp.name) / "new"

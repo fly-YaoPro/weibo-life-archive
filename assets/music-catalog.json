@@ -1,0 +1,9 @@
+{
+  "verified_on": "2026-10-31",
+  "catalog_source": "https://incompetech.com/music/royalty-free/pieces.json",
+  "license_source": "https://incompetech.com/music/royalty-free/licenses/",
+  "tracks": [
+    {"id":"dream-culture","title":"Dream Culture","artist":"Kevin MacLeod","url":"https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dream%20Culture.mp3","reference":"https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1300046","license":"CC BY 4.0","license_url":"https://creativecommons.org/licenses/by/4.0/","moods":["gentle","reflective"],"description":"舒缓梦境钢琴与轻打击，适合安静回看"},
+    {"id":"carefree","title":"Carefree","artist":"Kevin MacLeod","url":"https://incompetech.com/music/royalty-free/mp3-royaltyfree/Carefree.mp3","reference":"https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1400037","license":"CC BY 4.0","license_url":"https://creativecommons.org/licenses/by/4.0/","moods":["bright"],"description":"尤克里里与轻巧木琴，适合明亮日常"}
+  ]
+}

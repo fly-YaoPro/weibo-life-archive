@@ -1,0 +1,115 @@
+/* Match the project's paper examples: coral cover, cream pages and fresh pastel accents. */
+body[data-skin=paper]{--ink:#34312c;--muted:#847465;--accent:#d74743;--accent-ink:#fff8ef;--yellow:#f2df8d;--soft:#cee4d6;--line:#e4d4c0;background-color:#faf6ec;background-image:radial-gradient(ellipse at 12% 15%,#fff8e9,transparent 62%),repeating-linear-gradient(0deg,#a2906503 0 1px,transparent 1px 5px)}
+body[data-skin=paper] .site-header{background:#fff9f0ed;border-color:#e2d4bd80;box-shadow:0 3px 20px #9d6f3708}
+body[data-skin=paper] .brand-mark{border-color:#d74743;background:repeating-linear-gradient(0deg,transparent 0 6px,#d747431a 6px 7px)}
+body[data-skin=paper] .site-header nav button[aria-current=page]{background:#f5d7c8;color:#b13f36;border-color:#db9f7d44;box-shadow:0 3px 0 #bd70581a}
+body[data-skin=paper] .site-header nav button[aria-current=page]:hover{background:#f2cbbb}
+body[data-skin=paper] .primary{background:#d74743;border-color:#c13734;color:#fff8ee;box-shadow:0 5px 15px #b5392b21}
+body[data-skin=paper] #pager{background:#fffaf0f2;border-color:#dcc6aa77;box-shadow:0 8px 22px #85502b12}
+body[data-skin=paper] #pager button:last-child{background:#fce1d4;border-color:#e7baa2;color:#a64232}
+body[data-skin=paper] .book.reader-book{background:linear-gradient(90deg,#d3413d,#e4534b 48%,#c73a37 51%,#dd4a42);border:1px solid #b833354d;border-radius:16px;box-shadow:0 22px 60px #a8432921,0 4px 0 #b93c33}
+body[data-skin=paper] .book:before{border-color:#ffdbbb99;border-radius:10px}
+body[data-skin=paper] .book .leaf{background:#fffaf0;border-color:#ecdac059;border-radius:6px}
+body[data-skin=paper] .book .ribbon{background:#d74743;color:#fff9ec;border-radius:3px 8px 8px 3px;box-shadow:2px 3px 0 #bd5a3b16}
+body[data-skin=paper] .reader-heading h1{font-weight:650;color:#302c26}
+body[data-skin=paper] .reader-quote{color:#b8503e}
+body[data-skin=paper] .spine .ring{box-shadow:inset 0 3px 4px #fff8,0 3px 4px #842c2866}
+body[data-skin=paper] .source-chips button{background:#fcf4e1;border-color:#d5b98c;color:#8e6947}
+body[data-skin=paper] .leaf.editorial:after{border-color:#d8946759;box-shadow:inset 0 0 0 4px #fffaf0,inset 0 0 0 5px #d8946740}
+body[data-skin=paper] .photo-frame{background:#fffdf6;border-color:#e2d3bc;box-shadow:0 9px 20px #83633219,1px 3px 0 #eee1c8}
+body[data-skin=paper] .calendar-sheet{background:#fffaf0;border-color:#e2ccaf;box-shadow:0 15px 45px #ac725013,inset 0 0 0 7px #f4e7cb}
+body[data-skin=paper] .year-month{background:#fcf1d9;border-color:#e5cda755;box-shadow:3px 5px 0 #e3cbb133}
+body[data-skin=paper] .year-month:nth-child(3n+2){background:#edf2df}
+body[data-skin=paper] .year-month:nth-child(3n+3){background:#f9e7de}
+body[data-skin=paper] .year-month-head h2{color:#bf6250;border-color:#d69c7855}
+body[data-skin=paper] .mini-days button[data-populated=true]{background:#efd18690;color:#a65637}
+body[data-skin=paper] .future-letter{background:repeating-linear-gradient(0deg,transparent 0 38px,#bba47a0d 38px 39px),#fffaf0;border-color:#e4cfab;box-shadow:0 18px 45px #ab6a3e13,5px 6px 0 #f0e0bf}
+body[data-skin=paper] .letter-closing{color:#b65243}
+body[data-skin=paper] .wish-card{background:#f5ebba;border-color:#decb9355;box-shadow:5px 6px 0 #cbb37418}
+body[data-skin=paper] .wish-card:nth-child(even){background:#dce9d6}
+body[data-skin=paper] .archive-totals>div{background:#faf0d7;border-color:#e4cda855;box-shadow:4px 4px 0 #e3caac24}
+body[data-skin=paper] .archive-totals>div:nth-child(even){background:#e4efd9}
+body[data-skin=paper] .archive-totals strong{color:#ba6450}
+body[data-skin=paper] .publication-bar{background:linear-gradient(#db8771,#c85646)}
+body[data-skin=paper] .chart-paper{background:#fff6e1;border-color:#e2cdaa}
+body[data-skin=paper] #welcome{background:#fff8e8;border-color:#e8ceb0;box-shadow:0 30px 80px #603a2855,4px 5px 0 #e3c5a777}
+body[data-skin=paper] #welcome .primary{background:#d74743;border-color:#c63e3a}
+/* A few genuine record previews supply the overview's missing hierarchy. */
+.reader-highlights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:5px;flex-shrink:0}
+.highlight-card{position:relative;min-width:0;padding:12px 10px;background:#fffdf5;border:1px solid #e5d6bd;border-radius:3px;box-shadow:0 5px 13px #8862370d}
+.highlight-card:nth-child(2){background:#ecf2df}.highlight-card:nth-child(3){background:#f9e3d9}
+.highlight-year{border:0;background:transparent;color:#ad6551;font-family:Georgia,serif;font-size:21px;padding:0 0 8px;text-align:left}
+.highlight-card h3{font-size:13px;line-height:1.6;font-weight:550;margin-top:8px;color:#725c46}
+.highlight-photo.photo-frame{padding:4px 4px 9px;margin:7px 0 2px;border-radius:1px;box-shadow:0 5px 10px #68492112;transform:rotate(-1deg)}
+.highlight-photo .photo-mount{height:74px!important;aspect-ratio:auto}
+.highlight-photo.photo-frame:before{width:30px;height:11px;top:-5px;left:calc(50% - 15px)}
+.highlight-photo.photo-frame[data-fastener=clip]:before{left:8px;width:9px;height:20px;top:-7px;border-width:1px}
+.highlight-photo.photo-frame[data-fastener=clip]:after{left:11px;width:3px;height:13px;top:-3px}
+.highlight-photo figcaption{display:none}
+body[data-skin=frosted] .highlight-card{border:1px solid #edf5a5;background:#e2ed54;border-radius:18px;padding:18px 14px;box-shadow:0 8px 16px #abc25617}
+body[data-skin=frosted] .highlight-card:nth-child(2){background:#e5ef7d}body[data-skin=frosted] .highlight-card:nth-child(3){background:#e2ed54}
+body[data-skin=frosted] .highlight-year{font-family:system-ui,sans-serif;font-weight:700;color:#28351e;font-size:26px;padding-bottom:2px}
+body[data-skin=frosted] .highlight-card h3{font-family:system-ui,sans-serif;font-size:13px;color:#506137;font-weight:550}
+/* The former long scroll becomes a compact introduction to the annual calendar. */
+#calendar>#stats{padding:20px 0 34px;margin-bottom:36px;border-bottom:1px dashed #c6aa8166}
+#calendar>#stats>h1{font-size:clamp(30px,4vw,45px);margin:10px 0 20px}
+#calendar>#stats>.lead{max-width:850px;font-size:16px;line-height:1.9}
+#calendar>#stats .archive-totals{margin:28px 0;gap:18px}
+#calendar>#stats .memory-photos{margin:28px 0 35px;max-width:900px}
+#calendar>#stats .memory-photos .photo-mount{aspect-ratio:4/3}
+#calendar>#stats .chart-paper{margin:25px 0 20px;padding:24px 28px}
+#calendar>#stats .publication-chart{height:85px;margin-top:20px}
+.year-stories{padding:10px 0;color:#826b4d;font-size:14px}.year-stories>summary{cursor:pointer;list-style:none;display:inline-block;border-bottom:1px dashed #c6aa81;padding:8px 0}
+.year-stories>summary:after{content:" ＋";margin-left:8px;color:#a57d4b}.year-stories[open]>summary:after{content:" −"}
+body[data-skin=frosted] #calendar>#stats{border-bottom:1px solid #ffffff99}
+body[data-skin=frosted] .year-stories{color:#687b4d}
+body[data-skin=frosted] .year-stories>summary{border-color:#a7be7a}
+@media(max-width:700px){#calendar>#stats{padding-top:10px;margin-bottom:26px;padding-bottom:24px}#calendar>#stats .archive-totals{gap:15px;margin:24px 0}#calendar>#stats .memory-photos{max-width:none;margin:25px 0 30px}#calendar>#stats .memory-photos .photo-frame{min-width:125px}#calendar>#stats .chart-paper{padding:22px 18px}.year-stories{font-size:13px}.reader-highlights{display:none}}
+
+@media(min-width:1000px){.reader-book[data-chapter=overview] .reader-copy{gap:18px;padding-top:35px;padding-bottom:30px}.reader-book.theme-C .reader-quote{font-size:34px;line-height:1.7;color:#34312b}.reader-book.theme-C .reader-prose .lead{font-size:24px;line-height:1.8}}
+body[data-skin=paper] .book.reader-book:after{content:"";position:absolute;left:-5px;bottom:25px;width:23px;height:42px;pointer-events:none;background:linear-gradient(135deg,#d6e7bc,#8fb994);border:2px solid #fff9e6;border-radius:4px 90% 8px 90%;transform:rotate(-25deg);box-shadow:2px 3px 0 #9cb78b16;opacity:.85}
+/* A complete reference-inspired cover: photograph, opening note and grounded portrait on the left. */
+@media(min-width:1000px){
+ .book.reader-cover .cover-visual{display:flex;flex-direction:column;gap:15px;padding:25px 24px}
+ .reader-cover .cover-visual>.reader-photo{flex:1;min-height:130px;margin:8px 0 0;max-height:none}
+ .cover-opening{flex-shrink:0;background:#f5e5a7;color:#765b3c;padding:14px 17px;font-size:15px;line-height:1.8;box-shadow:2px 4px 0 #bc934518;border-radius:1px;transform:rotate(-.6deg)}
+ .cover-portrait{flex-shrink:0;background:#fffdf2;border:1px solid #eadac1;padding:16px 18px;box-shadow:0 6px 15px #b8915a0b;border-radius:5px}
+ .cover-portrait h2{font-size:17px;line-height:1.55;margin-bottom:8px;font-weight:600;color:#514332}
+ .cover-portrait>p{font-size:14px;line-height:1.85;color:#887052}
+ .portrait-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.portrait-tags span{background:#e3ecd1;font-size:11px;padding:3px 8px;color:#6c7b4a;border-radius:3px}
+ .book.reader-cover .reader-heading h1{font-size:clamp(32px,4.5dvh,43px);line-height:1.5;font-weight:700;position:relative;margin-bottom:3px}
+ body[data-skin=paper] .reader-cover .reader-heading h1:after{content:"";position:absolute;width:65%;height:4px;left:0;bottom:-7px;background:#eeaca065;border-radius:50%;transform:rotate(-1deg);pointer-events:none}
+ body[data-skin=paper] .reader-cover .ribbon{padding:7px 16px;min-width:60%;font-size:12px;letter-spacing:.1em}
+ body[data-skin=paper] .reader-cover .highlight-card{padding:21px 9px 11px;background:#fffdf5;position:relative}
+ body[data-skin=paper] .reader-cover .highlight-year{position:absolute;top:-7px;left:9px;z-index:4;font-family:system-ui,sans-serif;font-size:13px;padding:3px 9px;color:#654f45;transform:rotate(-5deg);background:#f4ced0;box-shadow:0 2px 5px #996a3010}
+ body[data-skin=paper] .reader-cover .highlight-card:nth-child(2) .highlight-year{background:#dcebbb;transform:rotate(2deg)}
+ body[data-skin=paper] .reader-cover .highlight-card:nth-child(3) .highlight-year{background:#d5e6f0;transform:rotate(-2deg)}
+ .reader-cover .highlight-photo .photo-mount{height:88px!important}
+ .reader-cover .reader-highlights{gap:15px;margin-top:15px}
+ .cover-memories{border:1px solid #fff9;background:#ffffff54;border-radius:22px;padding:14px 17px;flex-shrink:0}
+ .cover-memory-row{display:grid;grid-template-columns:38px 57px minmax(0,1fr);align-items:center;gap:10px;margin:10px 0}
+ .cover-memory-row time{font-size:11px;color:#748468}.cover-memory-row h3{font-size:13px;line-height:1.6;font-weight:600}.cover-memory-row p{font-size:12px;line-height:1.8;color:#7b876d}
+ .cover-memory-photo.photo-frame{margin:0;padding:3px 3px 5px;border-radius:9px;box-shadow:0 3px 8px #5e794517}.cover-memory-photo .photo-mount{height:42px!important;aspect-ratio:auto}.cover-memory-photo figcaption{display:none}.cover-memory-photo.photo-frame:before{width:22px;height:8px;top:-3px;left:calc(50% - 11px)}
+ .cover-memory-photo.photo-frame[data-fastener=clip]:before{left:5px;top:-5px;height:15px;width:7px;border-width:1px}.cover-memory-photo.photo-frame[data-fastener=clip]:after{display:none}
+ body[data-skin=frosted] .cover-opening{background:#f2f7d679;border:1px solid #ffffffc2;color:#5e7150;border-radius:16px;transform:none;box-shadow:none;font-family:system-ui,sans-serif}
+ body[data-skin=frosted] .cover-portrait{background:#ffffff69;border:1px solid #ffffffd9;border-radius:21px;box-shadow:none;backdrop-filter:blur(16px)}
+ body[data-skin=frosted] .cover-portrait h2{font-family:system-ui,sans-serif;color:#384b2c;font-weight:650}
+ body[data-skin=frosted] .cover-portrait>p{color:#6e7f5e}
+ body[data-skin=frosted] .portrait-tags span{background:#edf4d480;border:1px solid #fff9;border-radius:14px;color:#728354}
+ body[data-skin=frosted] .reader-cover .reader-copy{gap:16px;padding:28px 10px;justify-content:center}
+ body[data-skin=frosted] .reader-cover .reader-heading h1{font-size:39px;font-weight:750;line-height:1.4}
+ body[data-skin=frosted] .reader-cover .reader-highlights{margin-top:0;gap:11px}
+ body[data-skin=frosted] .reader-cover .highlight-card{padding:12px 12px}
+ body[data-skin=frosted] .reader-cover .highlight-year{font-size:24px}
+ body[data-skin=frosted] .cover-memory-photo.photo-frame{padding:3px 3px 5px;border-radius:9px;margin:0}
+ body[data-skin=frosted] .cover-memory-photo.photo-frame:before{width:22px;height:8px;top:-3px;left:calc(50% - 11px)}
+ body[data-skin=frosted] .cover-memory-photo .photo-mount{border-radius:5px}
+}
+@media(min-width:1000px){
+ .cover-opening{padding:12px 16px;line-height:1.75}
+ .cover-portrait{padding:12px 16px}
+ .cover-portrait h2{font-size:16px;line-height:1.5;margin-bottom:6px}
+ .cover-portrait>p{font-size:14px;line-height:1.6}
+ .cover-portrait .portrait-tags{margin-top:6px}.cover-portrait .portrait-tags span{font-size:10px;padding:2px 7px}
+ .cover-portrait .source-chips{margin-top:8px;gap:7px}.cover-portrait .source-chips button{font-size:10px;padding:3px 7px}
+}

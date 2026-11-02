@@ -8,6 +8,9 @@ from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import urlsplit
+from experience import validate_experience, validate_narrative, synthetic_fixture
+from runtime_contract import validate_runtime
+from archive_common import date_key
 from audit_images import audit as audit_images
 
 TITLES={'weibo':'人生手账','taobao':'消费手账'}
@@ -15,7 +18,24 @@ STATUSES={'complete','partial','selected','unread','failed','empty'}
 FORBIDDEN_KEYS={'cookie','cookies','access_token','refresh_token','password','authorization','storage_state'}
 
 def check(root,kind,stage='data'):
-    root=Path(root).resolve(); errors=[]; warnings=[]
+    root=Path(root).resolve()
+    if root.is_file():
+        from pack_html import verify_packed
+        result=verify_packed(root)
+        if result.get('ok'):
+            try:
+                html=root.read_text(encoding='utf-8')
+                data=json.loads(re.search(r'window.JOURNAL_DATA = (.*?);\n',html).group(1))
+                assets=json.loads(re.search(r'window.JOURNAL_ASSETS=(.*?);\n',html).group(1))
+                contract=validate_runtime(data['meta'],data['records'],data['story'],assets=assets)
+                result['narrative']=contract['narrative']
+                result['runtime_contract']={k:v for k,v in contract.items() if k not in {'paths','narrative'}}
+                result['synthetic_fixture']=synthetic_fixture(data['meta'])
+                if result['synthetic_fixture']:result['warnings'].append('合成离线功能夹具，不是真实采集或生图质量证明')
+            except (ValueError,KeyError,TypeError,AttributeError,OSError) as error:
+                result['errors'].append('runtime: '+str(error));result['ok']=False
+        return result
+    errors=[]; warnings=[]
     def err(msg):errors.append(msg)
     def load(name):
         path=root/name
@@ -52,13 +72,20 @@ def check(root,kind,stage='data'):
             url(value.get('source_url'),field+'.source_url')
         elif origin=='user_provided':
             text(value.get('provided_reference'),field+'.provided_reference')
+        elif origin=='synthetic_fixture' and synthetic_fixture(meta):
+            text(value.get('provided_reference'),field+'.provided_reference')
         else:
             err(field+': evidence image must be platform or authorized real user-provided media, not synthetic/stock')
     meta=load('project_meta.json');coverage=load('coverage.json')
     records=load('records.json' if kind=='weibo' else 'orders.json')
     for name,value in [('project_meta',meta),('coverage',coverage),('data',records)]:private_keys(value,name)
     if not isinstance(meta,dict):err('project_meta.json: expected object');meta={}
+    if kind == 'weibo':
+        image_audit = audit_images(root, meta)
+        errors.extend('image audit: ' + message for message in image_audit['errors'])
+        warnings.extend(image_audit['warnings'])
     if meta.get('platform')!=kind:err('project_meta.platform: does not match requested kind')
+    if synthetic_fixture(meta):warnings.append('合成离线功能夹具；不是真实采集、用户经历或生成图质量证明')
     text(meta.get('title'),'project_meta.title')
     if meta.get('mode') not in ('full','selected'):err('project_meta.mode: expected full or selected')
     if meta.get('timezone')!='Asia/Shanghai':err('project_meta.timezone: expected Asia/Shanghai')
@@ -85,7 +112,7 @@ def check(root,kind,stage='data'):
         if c.get('status')=='empty' and c.get('saved_count')!=0:err(field+': empty must have confirmed zero saved_count')
     if not coverage:warnings.append('No per-year coverage has been recorded')
     if not isinstance(records,list):err('data JSON: expected array');records=[]
-    seen=set();image_count=0;unknown_amounts=0
+    seen=set();image_count=0;video_count=0;video_cover_count=0;unknown_amounts=0;narrative=None
     def timestamp(value,field):
         try:
             dt=datetime.fromisoformat(value.replace('Z','+00:00'))
@@ -110,7 +137,7 @@ def check(root,kind,stage='data'):
         timestamp(r.get('created_at' if kind=='weibo' else 'placed_at'),field+'.date')
         url(r.get('url'),field+'.url')
         if kind=='weibo':
-            text(r.get('text'),field+'.text')
+            if not isinstance(r.get('text'),str) or (not r['text'].strip() and not r.get('images') and not r.get('is_video')):err(field+'.text: expected text or a real image/video record')
             if r.get('author_uid')!=target.get('uid'):err(field+': author UID differs from target')
             if not isinstance(r.get('selected'),bool):err(field+': selected must be boolean')
             images=r.get('images')
@@ -119,9 +146,27 @@ def check(root,kind,stage='data'):
                 if not isinstance(img,dict):err(field+'.images: expected objects');continue
                 evidence_image(img,field+f'.images[{j}]')
                 if img.get('download_status') not in ('saved','partial','failed','unavailable'):err(field+'.images: unknown image status')
-                for k in ('thumb_path','large_path'):
-                    local(img.get(k),field+f'.images[{j}].'+k,required=img.get('download_status')=='saved')
+                for k in ('thumb_path','large_path','original_path'):
+                    local(img.get(k),field+f'.images[{j}].'+k,required=img.get('download_status')=='saved' and k!='original_path')
                 image_count+=1
+            if r.get('is_video') or r.get('video'):
+                video_count+=1
+                video=r.get('video')
+                if r.get('is_video') is not True or not isinstance(video,dict):
+                    err(field+'.video: video record requires is_video:true and metadata object');continue
+                if video.get('source_url')!=r.get('url'):err(field+'.video: source must be the same original post URL')
+                covers=video.get('covers')
+                if not isinstance(covers,list):err(field+'.video.covers: expected array');continue
+                if video.get('cover_status') not in ('observed','unavailable') or bool(covers)!=(video.get('cover_status')=='observed'):
+                    err(field+'.video: cover_status contradicts observed covers')
+                for j,img in enumerate(covers):
+                    cover_field=field+f'.video.covers[{j}]'
+                    if not isinstance(img,dict):err(cover_field+': expected object');continue
+                    evidence_image(img,cover_field)
+                    if img.get('download_status') not in ('saved','partial','failed','unavailable'):err(cover_field+': unknown image status')
+                    for k in ('thumb_path','large_path','original_path'):
+                        local(img.get(k),cover_field+'.'+k,required=img.get('download_status')=='saved' and k!='original_path')
+                    video_cover_count+=1
         else:
             if r.get('is_success') is not True:err(field+': non-success order in included data')
             if any(s in str(r.get('raw_status','')) for s in ('交易关闭','已取消','待付款','未付款')):err(field+': raw status contradicts included success')
@@ -146,13 +191,26 @@ def check(root,kind,stage='data'):
                 if item.get('image_status') not in ('saved','failed','unavailable'):err(field+'.items: unknown image status')
                 local(item.get('image_path'),field+f'.items[{j}].image_path',required=item.get('image_status')=='saved')
                 image_count+=1
+    try:validate_runtime(meta,records,root=root)
+    except (ValueError,KeyError,TypeError,AttributeError,OSError) as error:err('runtime: '+str(error))
+    if kind=='weibo' and meta.get('selection_policy') and meta.get('mode')=='selected':
+        from collections import Counter
+        policy=meta['selection_policy']
+        try:
+            chosen=[r for r in records if r.get('selected')]
+            for width,key in ((7,'monthly_limit'),(4,'yearly_limit')):
+                limit=policy[key]
+                if type(limit) is not int or limit<1:raise ValueError('quota must be a positive integer')
+                if any(n>limit for n in Counter(date_key(r['created_at'])[:width] for r in chosen).values()):err('selection exceeds '+key)
+        except (ValueError,KeyError,TypeError):err('invalid selection_policy or selected timestamps')
+    if kind=='weibo':
+        for r in records:
+            shot=r.get('screenshot')
+            if shot:
+                if shot.get('origin')!='browser_capture' or shot.get('source_url')!=r.get('url'):err('screenshot source differs from original record')
+                local(shot.get('path'),'screenshot.path',required=True)
     if meta.get('mode')=='full':warnings.append('Full is the requested mode; completion still requires coverage/source verification')
     if unknown_amounts:warnings.append(f'{unknown_amounts} orders have unknown paid amount; do not treat as zero')
-    image_audit=None
-    if kind=='weibo':
-        image_audit=audit_images(root,meta,records)
-        errors.extend('image audit: '+message for message in image_audit['errors'])
-        warnings.extend('image audit: '+message for message in image_audit['warnings'])
     if stage=='final':
         story=load('story.json');private_keys(story,'story')
         if not isinstance(story,dict):err('story.json: expected object');story={}
@@ -161,13 +219,42 @@ def check(root,kind,stage='data'):
         if len(str(overview.get('text','')))>200:err('story.overview: exceeds 200 characters')
         themes=story.get('themes',[])
         if not isinstance(themes,list):themes=[];err('story.themes: expected array')
+        grounding=meta.get('presentation',{}).get('grounding_required',False)
+        normalized=[]
+        try:
+            normalized=[{**r,'id':r.get('id',r.get('order_id')),'date':date_key(r.get('created_at',r.get('placed_at'))),
+                         'text':r.get('text','\n'.join(item.get('name','') for item in r.get('items',[]) if isinstance(item,dict)))} for r in records if isinstance(r,dict)]
+            contract=validate_runtime(meta,records,story,root=root)
+            narrative=contract['narrative']
+            if not grounding:warnings.append('Legacy editorial content has no mandatory quote anchors; verify semantic grounding before delivery')
+        except (ValueError,KeyError,TypeError,OSError) as error:err('experience: '+str(error))
         sources=[overview]+themes
         if kind=='weibo' and isinstance(story.get('song'),dict):sources.append(story['song'])
         for i,s in enumerate(sources):
             if not isinstance(s,dict):err('story entry: expected object');continue
             refs=s.get('source_ids',[])
-            if not isinstance(refs,list) or any(not isinstance(x,str) or x not in seen for x in refs):err(f'story entry {i}: source IDs absent from data')
-            for j,img in enumerate(s.get('image_paths',[])):local(img,f'story entry {i} image {j}',required=True)
+            if not isinstance(refs,list) or not refs or any(not isinstance(x,str) or x not in seen for x in refs):err(f'story entry {i}: source IDs absent from data')
+            allowed={image.get(k) for r in records if isinstance(r,dict) and r.get('id',r.get('order_id')) in refs
+                     for image in r.get('images',r.get('items',[]))+r.get('video',{}).get('covers',[]) if isinstance(image,dict)
+                     for k in ('thumb_path','large_path','original_path','image_path')}
+            for j,img in enumerate(s.get('image_paths',[])):
+                local(img,f'story entry {i} image {j}',required=True)
+                if img not in allowed:err(f'story entry {i} image {j}: image does not belong to its cited records')
+        runtime_path=root/'journal-data.js'
+        if runtime_path.is_file():
+            try:
+                runtime=json.loads(runtime_path.read_text(encoding='utf-8').split(' = ',1)[1].rstrip(';\n'))
+                validate_runtime(runtime['meta'],runtime['records'],runtime['story'],root=root)
+                def editorial(value):
+                    value=json.loads(json.dumps(value))
+                    for section in [value.get('overview',{})]+value.get('themes',[]):section.pop('images',None)
+                    value.setdefault('plans',[])
+                    return value
+                if editorial(runtime['story'])!=editorial(story):err('journal-data.js: rendered editorial content differs from story.json')
+                expected={r['id']:r['text'] for r in normalized}
+                rendered={r['id']:r['text'] for r in runtime['records']}
+                if rendered!=expected:err('journal-data.js: rendered source IDs/text differ from saved records')
+            except (ValueError,KeyError,TypeError,IndexError) as error:err('journal-data.js: '+str(error))
         datajs='data.js' if kind=='weibo' else 'orders.js'
         for name in ('index.html','styles.css','app.js',datajs):local(name,name,required=True)
         html=(root/'index.html').read_text('utf-8') if (root/'index.html').is_file() else ''
@@ -184,12 +271,13 @@ def check(root,kind,stage='data'):
         for p in pngs:
             header=p.read_bytes()[:24]
             if header[:8]==b'\x89PNG\r\n\x1a\n' and len(header)==24:dimensions.append(struct.unpack('>II',header[16:24]))
-        if (1080,1440) not in dimensions:err('exports: no 1080x1440 PNG found; actually export and inspect share image')
-        warnings.append('Static checks do not prove JS data parity, rendering, interactions, backup merge or file:// behavior')
+        if not any(w==1080 and h>1440 for w,h in dimensions):warnings.append('分享长图需在浏览器实际导出，并在独立验收目录核对尺寸与完整内容')
+        warnings.append('Static checks do not prove rendering, interactions, semantic interpretation or file:// behavior')
     for p in root.rglob('*'):
         if p.name.lower() in ('.env','.wbprofile','storage-state.json','cookies.json','login-state.json'):
             err('Credential/profile-like file or directory present in deliverable');break
-    return {'ok':not errors,'kind':kind,'stage':stage,'records':len(records),'unique_source_ids':len(seen),'images':image_count,'image_audit':image_audit,'errors':errors,'warnings':warnings}
+    return {'ok':not errors,'kind':kind,'stage':stage,'records':len(records),'unique_source_ids':len(seen),'images':image_count,
+            'videos':video_count,'video_covers':video_cover_count,'synthetic_fixture':synthetic_fixture(meta),'narrative':narrative,'errors':errors,'warnings':warnings}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

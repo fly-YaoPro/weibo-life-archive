@@ -1,0 +1,13 @@
+/* Additive overrides: existing paper/frosted art direction stays shared. */
+.scope-note{font:12px/1.4 system-ui,sans-serif;color:var(--muted,#786d63);margin:0 auto 8px;max-width:1200px;text-align:center}
+#plans{max-width:1120px;margin:20px auto 60px;padding:24px}
+.plan-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:20px 0}
+.plan-toolbar label{display:flex;gap:8px;align-items:center}.plan-toolbar button,.plan-toolbar .button,.plan-actions button{border:1px solid #bcb3a7;background:#fff9;padding:9px 14px;border-radius:10px;cursor:pointer;color:inherit;font:inherit}
+#plan-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:18px}
+.plan-card{background:#fffc;border:1px solid #d9cbb6;border-radius:18px;padding:22px;overflow-wrap:anywhere}
+.plan-card[data-done=true]{opacity:.72}.plan-card[data-done=true] h3{text-decoration:line-through}
+.plan-label,.plan-date{font-size:13px;color:#786b58}.plan-card h3{font-size:21px;line-height:1.5}.plan-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.plan-form{display:grid;gap:18px;min-width:min(70vw,460px)}.plan-form label{display:grid;gap:8px}.plan-form input,.plan-form textarea{font:inherit;border:1px solid #bcb3a7;border-radius:8px;padding:10px;width:100%;box-sizing:border-box}.plan-form textarea{min-height:100px}
+body[data-skin=frosted] .plan-card{background:#ffffffa8;backdrop-filter:blur(12px);border-color:#fff}
+.share-permissions{display:flex;flex-wrap:wrap;gap:16px;padding:12px 0}.share-permissions label{display:flex;gap:6px;align-items:center;font-size:14px}
+@media(max-width:650px){#plans{padding:12px}.scope-note{font-size:10px;max-width:92vw}.plan-toolbar button,.plan-toolbar .button{font-size:12px}.plan-card{padding:18px}}

@@ -1,0 +1,187 @@
+/* Modern frosted gallery. The shared DOM and actions stay identical to the paper album. */
+body[data-skin=frosted]{--ink:#22291f;--muted:#6d776a;--accent:#e2ed54;--accent-ink:#22291f;--paper:#ffffffa8;--line:#ffffffb5;--soft:#dae8cd;--yellow:#e2ed54;--shadow:0 22px 65px #5865481a;background-color:#dfe7df;background-image:radial-gradient(ellipse at 4% 12%,#d9e7c9,transparent 56%),radial-gradient(ellipse at 97% 62%,#f1d2bd,transparent 55%),radial-gradient(ellipse at 55% 90%,#d2e3e8,transparent 65%);font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink)}
+body[data-skin=frosted] h1,body[data-skin=frosted] h2,body[data-skin=frosted] h3,body[data-skin=frosted] .brand{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+body[data-skin=frosted] .site-header{padding-top:13px;padding-bottom:13px;background:#ffffff60;border-bottom:1px solid #ffffffab;box-shadow:0 8px 35px #51634c0b;backdrop-filter:blur(30px) saturate(130%);gap:16px}
+body[data-skin=frosted] .brand{font-weight:650;letter-spacing:-.025em}
+body[data-skin=frosted] .brand-mark{border:0;width:27px;height:27px;border-radius:9px;background:#242a22;transform:none;box-shadow:0 3px 10px #27331b15;position:relative}
+body[data-skin=frosted] .brand-mark:after{content:"";position:absolute;inset:8px;background:#e2ed54;border-radius:50%}
+body[data-skin=frosted] .site-header nav{gap:4px}
+body[data-skin=frosted] .site-header nav button{border-radius:24px;font-weight:500;background:transparent;border:1px solid transparent;padding:9px 16px}
+body[data-skin=frosted] .site-header nav button[aria-current=page]{border-color:#e9f392;background:#e2ed54;color:#21291e;border-radius:24px;box-shadow:0 4px 14px #a4b34d21;transform:none}
+body[data-skin=frosted] .site-header nav button:hover{background:#ffffffa3}
+body[data-skin=frosted] .site-header>.quiet{background:#ffffff52;border:1px solid #fff;border-radius:24px;color:#384131;box-shadow:0 4px 12px #6473510c}
+body[data-skin=frosted] .primary{background:#e2ed54;border:1px solid #e2ed54;color:#22291f;border-radius:24px;box-shadow:0 5px 16px #96a74126}
+body[data-skin=frosted] .eyebrow{color:#707f60;letter-spacing:.17em;font-size:11px}
+body[data-skin=frosted] .section-heading h1{font-weight:700;letter-spacing:-.04em;font-size:clamp(32px,4.2vw,50px)}
+body[data-skin=frosted] #pager{background:#ffffff7a;border:1px solid #ffffffda;border-radius:30px;box-shadow:0 8px 25px #526c4013;backdrop-filter:blur(25px);padding:8px 14px}
+body[data-skin=frosted] #pager:before{display:none}
+body[data-skin=frosted] #pager button{border-radius:22px;background:#ffffff61;border:1px solid #ffffffaf;color:#384631;padding:8px 16px}
+body[data-skin=frosted] #pager button:last-child{background:#e2ed54;border-color:#e2ed54;color:#232d1d}
+body[data-skin=frosted] #pager .page-counter{font-family:system-ui,sans-serif;color:#68775b;font-size:13px;font-weight:550;letter-spacing:0}
+/* An image-led gallery spread replaces the stitched paper cover. */
+body[data-skin=frosted] .book{background:transparent;border:0;border-radius:0;box-shadow:none;padding:0;gap:30px;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)}
+body[data-skin=frosted] .book:before,body[data-skin=frosted] .spine{display:none}
+body[data-skin=frosted] .book .leaf{background:#ffffff4f;border:1px solid #ffffffbe;border-radius:26px;padding:30px;backdrop-filter:blur(18px);box-shadow:0 16px 45px #5268470e;min-width:0}
+body[data-skin=frosted] .book .leaf.editorial{background:transparent;border:0;box-shadow:none;padding:12px 6px}
+body[data-skin=frosted] .leaf.editorial:after{display:none}
+body[data-skin=frosted] .book h1{font-family:system-ui,sans-serif;font-weight:750;letter-spacing:-.04em;font-size:clamp(31px,3.25vw,47px);line-height:1.45}
+body[data-skin=frosted] .book .ribbon{background:#e2ed54;color:#28301f;border-radius:20px;padding:7px 14px;font-size:11px;font-weight:650;letter-spacing:.05em;box-shadow:none}
+body[data-skin=frosted] .book .lead{font-size:17px;line-height:1.95;color:#485243}
+body[data-skin=frosted] .book .quote{font-family:system-ui,sans-serif;font-size:clamp(26px,2.8vw,37px);font-weight:550;letter-spacing:-.025em;color:#35462b;line-height:1.8}
+body[data-skin=frosted] .book.theme-C .leaf:first-child{background:linear-gradient(145deg,#e7f0b687,#ffffff66);border-radius:30px}
+body[data-skin=frosted] .book.theme-C .leaf:first-child:before{content:"";position:absolute;left:30px;top:28px;width:44px;height:6px;border-radius:5px;background:#bccb59;pointer-events:none}
+body[data-skin=frosted] .compare-leaf{border-radius:28px!important;background:#ffffff53!important}
+body[data-skin=frosted] .journal-note{background:#eaf0b4b3;color:#4d5c34;border:1px solid #ffffff95;border-radius:18px;box-shadow:none;transform:none;font-size:15px}
+body[data-skin=frosted] .source-chips button{border:1px solid #ffffffde;border-radius:18px;background:#ffffff65;color:#56634a;font-size:11px;padding:5px 11px}
+body[data-skin=frosted] .source-chips button:hover{background:#eef3c9}
+body[data-skin=frosted] .timeline{padding:22px 20px 5px;background:#ffffff55;border:1px solid #ffffffca;border-radius:26px;margin-top:28px;backdrop-filter:blur(18px)}
+body[data-skin=frosted] .timeline-row{position:relative;gap:15px;grid-template-columns:48px 76px minmax(0,1fr);padding-bottom:13px;margin-bottom:18px}
+body[data-skin=frosted] .timeline-row time{font-weight:600;color:#364629;background:#e2ed54;border-radius:7px;padding:2px 4px;text-align:center;font-size:12px}
+body[data-skin=frosted] .timeline-row h3{font-family:system-ui,sans-serif;font-weight:650;font-size:17px}
+body[data-skin=frosted] .timeline-row p{color:#65715e;font-size:13px}
+/* Every photo remains a physical print, held by clear tabs or a silver clip. */
+body[data-skin=frosted] .photo-frame{background:#ffffffbe;border:1px solid #fffffff2;border-radius:19px;padding:10px 10px 26px;box-shadow:0 18px 38px #5673561c,inset 0 1px 0 #ffffff;backdrop-filter:blur(16px);transform:none;margin-top:18px}
+body[data-skin=frosted] .photo-frame:nth-child(even){transform:none}
+body[data-skin=frosted] .photo-frame:before{display:block;left:calc(50% - 26px);top:-9px;width:52px;height:20px;background:linear-gradient(110deg,#ffffffbe,#ccd8c795,#ffffffb3);clip-path:none;border:1px solid #ffffffad;border-radius:5px;transform:rotate(-2deg);box-shadow:0 3px 7px #45604013}
+body[data-skin=frosted] .photo-frame[data-fastener=clip]:before{left:18px;top:-16px;width:18px;height:39px;background:transparent;border:2px solid #a0b2a4;border-radius:10px;box-shadow:1px 2px 2px #364c3633,inset 1px 0 0 #fff;transform:rotate(9deg)}
+body[data-skin=frosted] .photo-frame[data-fastener=clip]:after{left:24px;top:-10px;width:7px;height:26px;border:1px solid #d0dccd;border-radius:5px;transform:rotate(9deg)}
+body[data-skin=frosted] .photo-frame .photo-mount{border-radius:12px;background:#eef4e9}
+body[data-skin=frosted] .photo-frame .photo-mount:after{border:1px solid #ffffff63;border-radius:12px;background:linear-gradient(130deg,#ffffff38,transparent 32%,transparent 85%,#ffffff13)}
+body[data-skin=frosted] .photo-frame .photo-mount img{width:100%;height:100%;max-height:none;object-fit:contain;border-radius:0;background:transparent}
+body[data-skin=frosted] .photo-frame figcaption{font-family:system-ui,sans-serif;font-size:11px;color:#6c7c61;padding-top:12px}
+body[data-skin=frosted] .photo-frame .missing-photo{background:#eef3df;color:#75856b;font-family:system-ui,sans-serif}
+body[data-skin=frosted] .photo-viewer .photo-mount img{height:auto;max-height:70dvh}
+body[data-skin=frosted] .photo-viewer{transform:none;padding:12px 12px 24px}
+body[data-skin=frosted] .timeline-photo.photo-frame{padding:5px 5px 10px;margin:5px 0 0;border-radius:10px;box-shadow:0 6px 16px #526a4019}
+body[data-skin=frosted] .timeline-photo.photo-frame:before{width:27px;height:9px;left:calc(50% - 13px);top:-4px;border-radius:3px}
+body[data-skin=frosted] .timeline-photo .photo-mount{border-radius:6px}
+body[data-skin=frosted] .timeline-photo figcaption{display:none}
+body[data-skin=frosted] .memory-photos{gap:28px;padding:0;margin-top:36px}
+body[data-skin=frosted] .record-card{border:1px solid #ffffffa8;background:#ffffff4f;border-radius:20px;padding:24px;margin:20px 0;box-shadow:0 12px 25px #647a500c}
+body[data-skin=frosted] .record-card.target{border-left:4px solid #b2c251;padding-left:24px}
+body[data-skin=frosted] .record-actions a,body[data-skin=frosted] .record-actions button{color:#687d48}
+body[data-skin=frosted] .search-grid .record-card{background:#ffffff69;border:1px solid #ffffffcb;border-radius:22px}
+/* The frosted annual cabinet leads with the photo; dates follow below it. */
+body[data-skin=frosted] .calendar-sheet{background:#ffffff3d;border:1px solid #ffffffca;border-radius:30px;box-shadow:0 20px 60px #49614013;backdrop-filter:blur(20px);padding:30px}
+body[data-skin=frosted] .calendar-sheet:before{display:none}
+body[data-skin=frosted] .month-toolbar button{border-radius:22px;background:#ffffff70;border:1px solid #ffffffd0;color:#405035;padding:8px 15px}
+body[data-skin=frosted] .month-toolbar select{border-radius:18px;background:#ffffffa0;border-color:#ffffffdd;font-weight:550}
+body[data-skin=frosted] .year-note{color:#64755b;font-size:14px}
+body[data-skin=frosted] .year-month{background:#ffffff56;border:1px solid #ffffffd0;border-radius:23px;box-shadow:0 10px 22px #6c80500c;padding:22px 20px}
+body[data-skin=frosted] .year-month:nth-child(3n+2){background:#edf4d665}
+body[data-skin=frosted] .year-month:nth-child(3n+3){background:#fbe3ce52}
+body[data-skin=frosted] .year-month-head{margin-bottom:15px}
+body[data-skin=frosted] .year-month-head h2{font-family:system-ui,sans-serif;font-size:34px;font-weight:650;letter-spacing:-.045em;background:transparent;border:0;outline:0;color:#34442a;padding:0;white-space:nowrap}
+body[data-skin=frosted] .year-month-head>span{font-size:10px;color:#697b5c;background:#ffffff91;border:1px solid #ffffffc9;border-radius:15px;padding:4px 8px}
+body[data-skin=frosted] .month-photo.photo-frame{padding:7px 7px 14px;border-radius:16px;transform:none;margin:18px 0 20px;box-shadow:0 10px 22px #526c3a13;background:#ffffffa6}
+body[data-skin=frosted] .month-photo .photo-mount{border-radius:9px}
+body[data-skin=frosted] .month-photo figcaption{color:#7c8b70;padding-top:9px}
+body[data-skin=frosted] .mini-weekdays{color:#859475;font-size:10px}
+body[data-skin=frosted] .mini-days button{color:#586a47;border-radius:9px;font-size:12px}
+body[data-skin=frosted] .mini-days button[data-populated=true]{background:#e0ed688c;color:#29371f;font-weight:650}
+body[data-skin=frosted] .mini-days button[data-populated=true]:after{background:#8a9a43}
+body[data-skin=frosted] .mini-days button[data-selected=true]{box-shadow:inset 0 0 0 1px #95a649}
+body[data-skin=frosted] .month-empty-note{background:linear-gradient(140deg,#eff5da88,#ffffff39);border:1px solid #ffffff93;border-radius:16px;margin:18px 0 20px;transform:none}
+body[data-skin=frosted] .pressed-flower{color:#a9bd717d;font-size:41px;transform:none}
+body[data-skin=frosted] .month-memory{font-family:system-ui,sans-serif;color:#849071;line-height:1.9}
+body[data-skin=frosted] .calendar-legend{color:#7d8d6b}
+body[data-skin=frosted] .day-detail{background:#ffffff65;border:1px solid #ffffffcb;border-radius:24px;box-shadow:0 20px 50px #687e4d10;backdrop-filter:blur(18px)}
+/* Lime and apricot highlights punctuate the cool glass instead of yellowed paper. */
+body[data-skin=frosted] #stats>.lead{color:#57654e}
+body[data-skin=frosted] .archive-totals>div{border:1px solid #ffffffce;background:#ffffff5e;border-radius:22px;box-shadow:0 10px 22px #6078410b;padding:25px 23px;transform:none}
+body[data-skin=frosted] .archive-totals>div:first-child{background:#e2ed54;border-color:#e2ed54}
+body[data-skin=frosted] .archive-totals>div:nth-child(3){background:#ffbd86b0;border-color:#ffd2aeb9}
+body[data-skin=frosted] .archive-totals strong{font-family:system-ui,sans-serif;font-size:43px;font-weight:700;letter-spacing:-.045em;color:#29351f}
+body[data-skin=frosted] .archive-totals span{font-size:12px;color:#607044}
+body[data-skin=frosted] .tags span{background:#ffffff69;border:1px solid #ffffffbc;color:#6e7e57;border-radius:18px;padding:6px 13px}
+body[data-skin=frosted] .chart-paper{background:#ffffff42;border:1px solid #ffffffc3;border-radius:26px;padding:34px;box-shadow:0 15px 40px #65794b0e;backdrop-filter:blur(20px)}
+body[data-skin=frosted] .chart-paper:before{display:none}
+body[data-skin=frosted] .publication-chart{border-color:#aac08855}
+body[data-skin=frosted] .publication-bar{background:linear-gradient(#bccc5d,#88a463);border-radius:4px 4px 0 0}
+body[data-skin=frosted] .annual-review{border-top:1px solid #ffffffbd}
+body[data-skin=frosted] .award{background:#e2ed5480;border:1px solid #d7e791;border-radius:20px;color:#56643c;transform:none}
+/* A luminous letter panel, with a small glass seal instead of a postage stamp. */
+body[data-skin=frosted] .future-letter{background:linear-gradient(145deg,#ffffff8c,#f4f9e879);border:1px solid #ffffffec;border-radius:30px;box-shadow:0 25px 70px #546c491b,inset 0 1px 0 #ffffff;backdrop-filter:blur(22px);color:#415035}
+body[data-skin=frosted] .future-letter:before{width:46px;height:46px;right:29px;top:25px;border:1px solid #ffffffd9;border-radius:50%;outline:0;background:radial-gradient(circle at 30% 28%,#f5fbdca6,#bbcba777);box-shadow:inset 0 0 0 7px #ffffff4d,0 8px 15px #677d4521;transform:none}
+body[data-skin=frosted] .future-letter h1{font-family:system-ui,sans-serif;font-weight:700;letter-spacing:-.045em;font-size:clamp(30px,3.8vw,42px)}
+body[data-skin=frosted] .future-letter>p{color:#546248;font-size:17px;line-height:2.15}
+body[data-skin=frosted] .letter-closing{font-family:system-ui,sans-serif;font-weight:550;color:#506d34}
+body[data-skin=frosted] .letter-keepsake{padding:10px 10px 24px;border-radius:21px;transform:none;background:#ffffffa3}
+body[data-skin=frosted] .letter-keepsake .photo-mount img{height:auto}
+body[data-skin=frosted] .future-letter .letter-afterword{font-size:12px;color:#85956c}
+body[data-skin=frosted] #plans{border-top:1px solid #ffffffb0;padding-top:30px}
+body[data-skin=frosted] .wish-seal{background:#e2ed5480;color:#697c3f;border:1px solid #eff5c3;border-radius:50%;box-shadow:inset 0 0 0 5px #ffffff4d;transform:none;font-family:system-ui,sans-serif}
+body[data-skin=frosted] .wish-card{border:1px solid #ffffffcf;border-radius:24px;background:#ffffff59;box-shadow:0 15px 35px #5f774715;backdrop-filter:blur(20px);padding:30px 26px;transform:none}
+body[data-skin=frosted] .wish-card:nth-child(even){background:#f1f6d962;transform:none}
+body[data-skin=frosted] .wish-card:before{top:22px;left:auto;right:22px;width:13px;height:13px;border-radius:50%;background:#ffbc86;border:1px solid #ffdec2;transform:none;box-shadow:0 0 0 5px #ffffff58}
+body[data-skin=frosted] .wish-number{font-family:system-ui,sans-serif;font-weight:700;font-style:normal;font-size:42px;letter-spacing:-.06em;color:#b3c684;margin-bottom:15px}
+body[data-skin=frosted] .wish-card h3{font-family:system-ui,sans-serif;font-size:22px;font-weight:650;letter-spacing:-.02em}
+body[data-skin=frosted] .wish-card>p{color:#758263;font-size:14px}
+/* The same player becomes an acrylic audio object rather than a wooden box. */
+body[data-skin=frosted] .record-player-button{background:linear-gradient(130deg,#ffa25f,#ffbd88);border:1px solid #ffdbbd;border-radius:18px;box-shadow:0 8px 20px #c789532b,inset 0 1px 0 #ffffff8c;color:#34271c}
+body[data-skin=frosted] .record-player-copy{color:#543923}
+body[data-skin=frosted] .record-label{font-weight:650;opacity:.8}
+body[data-skin=frosted] .turntable-disc{box-shadow:0 4px 7px #4f332746;background:repeating-radial-gradient(circle,#2e3229 0 1px,#181b17 1px 3px)}
+body[data-skin=frosted] .turntable-disc:before{background:#e2ed54;border-color:#f3f6c4}
+body[data-skin=frosted] .tonearm{background:#fff4dc;box-shadow:0 2px 3px #7c6a544a}
+body[data-skin=frosted] .tonearm:after{background:#fff7e5}
+body[data-skin=frosted] .power-light{background:#826847}
+body[data-skin=frosted] #music-control[data-playing=true] .power-light{background:#dcec4f;box-shadow:0 0 7px #ecf785}
+body[data-skin=frosted] .record-info{color:#6b7d53}
+/* The room keeps the same image coordinates, with a cool glass foreground. */
+body[data-skin=frosted][data-view=scene] .site-header{background:#29322563;border-bottom:1px solid #ffffff43;backdrop-filter:blur(24px);color:#f4f9e5}
+body[data-skin=frosted][data-view=scene] .site-header nav button[aria-current=page]{background:#e2ed54;border-color:#e2ed54;color:#20291a;border-radius:24px;box-shadow:none}
+body[data-skin=frosted][data-view=scene] .site-header nav button:hover{background:#e2ed5475}
+body[data-skin=frosted][data-view=scene] .brand-mark{background:#edf4c393;border-color:transparent}
+body[data-skin=frosted][data-view=scene] .brand-mark:after{background:#34472c}
+body[data-skin=frosted][data-view=scene] .site-header>.quiet{background:#ffffff1f;border:1px solid #ffffff74;border-radius:24px;color:#f4f8ed}
+body[data-skin=frosted] #scene:after{background:linear-gradient(0deg,#1f2b2378,transparent 38%,transparent 72%,#1f2b2356),radial-gradient(ellipse at center,transparent 50%,#1e302660)}
+body[data-skin=frosted] .scene-atmosphere{filter:blur(26px) brightness(.83) saturate(.78)}
+body[data-skin=frosted] .scene-heading{padding:22px 26px;background:#ffffff29;border:1px solid #ffffff79;border-radius:25px;backdrop-filter:blur(20px);box-shadow:0 16px 35px #2231261f;color:#f8ffe8;max-width:590px;text-shadow:0 2px 15px #24302635}
+body[data-skin=frosted] .scene-heading h1{font-family:system-ui,sans-serif;letter-spacing:-.03em;font-weight:650;font-size:clamp(30px,3.4vw,45px)}
+body[data-skin=frosted] .scene-heading .eyebrow{color:#e2ed99;font-size:11px}
+body[data-skin=frosted] .scene-heading>p:last-child{color:#e8f0dd}
+body[data-skin=frosted] .scene-footer .primary{background:#e2ed54;border:1px solid #eff592;color:#29331f;border-radius:24px;box-shadow:0 8px 25px #21361d33}
+body[data-skin=frosted] .scene-directory button{background:#ffffff22;border:1px solid #ffffff85;border-radius:20px;color:#f0f7e5;backdrop-filter:blur(12px)}
+body[data-skin=frosted] .scene-hotspot{background:#ffffffc9;border:1px solid #ffffffec;border-radius:22px;color:#3c522e;box-shadow:0 5px 25px #1f352135;backdrop-filter:blur(14px)}
+body[data-skin=frosted] .hotspot-dot{background:#ddea727f}
+body[data-skin=frosted] .hotspot-tip{background:#f5fbeaee;border:1px solid #ffffffdf;border-radius:16px;color:#50673e}
+body[data-skin=frosted][data-view=scene] .record-player-button{box-shadow:0 13px 30px #1d2e274f,inset 0 1px 0 #ffffff80;border-radius:24px}
+body[data-skin=frosted] #welcome{background:linear-gradient(145deg,#ffffffef,#eef5dddf);border:1px solid #ffffffef;border-radius:27px;box-shadow:0 30px 80px #23372855;color:#415333;backdrop-filter:blur(26px)}
+body[data-skin=frosted] #welcome:before{display:none}
+body[data-skin=frosted] #welcome h2{font-weight:650;letter-spacing:-.025em;color:#2d3c24}
+body[data-skin=frosted] #welcome .eyebrow{color:#829358}
+body[data-skin=frosted] #welcome-close{color:#758961;border-radius:50%;background:#ffffff68}
+body[data-skin=frosted] #welcome .primary{background:#e2ed54;border:1px solid #e2ed54;color:#29351d;border-radius:22px;box-shadow:0 6px 18px #aab94a33}
+body[data-skin=frosted] #welcome .quiet{color:#7f916b;border-radius:22px}
+body[data-skin=frosted] .welcome-record span{box-shadow:0 8px 20px #49644535;background:repeating-radial-gradient(circle,#34432b 0 1px,#20271c 1px 4px)}
+body[data-skin=frosted] .welcome-record span:after{background:#e2ed54;border-color:#ecf1b4}
+body[data-skin=frosted] #modal{background:#f3f8ecee;border:1px solid #fffffff2;border-radius:24px;box-shadow:0 25px 80px #2b402b40;backdrop-filter:blur(22px)}
+body[data-skin=frosted] #modal .modal-top h2{font-family:system-ui,sans-serif;font-weight:650}
+body[data-skin=frosted] input,body[data-skin=frosted] select{background:#ffffff96;border:1px solid #ffffffd0;border-radius:18px;color:#50613f}
+@media(max-width:1100px){body[data-skin=frosted] .site-header{gap:8px}body[data-skin=frosted] .site-header nav button{padding:8px 10px}body[data-skin=frosted] .book{gap:24px}body[data-skin=frosted] .book .leaf{padding:24px}body[data-skin=frosted] .book .leaf.editorial{padding:8px 3px}body[data-skin=frosted] .year-month{padding:19px 16px}}
+@media(max-width:800px){body[data-skin=frosted] .scene-heading{max-width:510px}body[data-skin=frosted] .book{gap:20px}}
+@media(max-width:650px){body[data-skin=frosted] .site-header{padding:10px 14px;gap:9px}body[data-skin=frosted] .site-header nav{gap:2px}body[data-skin=frosted] .site-header nav button{padding:8px 7px;font-size:11px}body[data-skin=frosted] .brand-mark{width:23px;height:23px;border-radius:8px}body[data-skin=frosted] .brand-mark:after{inset:7px}body[data-skin=frosted] .site-header>.quiet{font-size:10px;padding:7px 9px}body[data-skin=frosted] #pager{padding:7px 9px;gap:9px}body[data-skin=frosted] #pager button{padding:7px 10px;font-size:12px}body[data-skin=frosted] #pager .page-counter{min-width:43px;font-size:12px}body[data-skin=frosted] .book{display:block;padding:0}body[data-skin=frosted] .book .leaf{padding:24px;border-radius:23px;margin-bottom:22px}body[data-skin=frosted] .book .leaf.editorial{padding:8px 4px;background:transparent;border:0}body[data-skin=frosted] .book h1{font-size:32px;line-height:1.5}body[data-skin=frosted] .book .lead{font-size:16px}body[data-skin=frosted] .book .quote{font-size:27px}body[data-skin=frosted] .timeline{padding:18px 14px 1px;border-radius:21px}body[data-skin=frosted] .timeline-row{grid-template-columns:38px 60px minmax(0,1fr);gap:10px}body[data-skin=frosted] .timeline-row h3{font-size:15px}body[data-skin=frosted] .timeline-row p{font-size:12px}body[data-skin=frosted] .photo-frame{padding:8px 8px 23px;border-radius:15px}body[data-skin=frosted] .photo-frame .photo-mount{border-radius:9px}body[data-skin=frosted] .photo-frame figcaption{font-size:10px}body[data-skin=frosted] .timeline-photo.photo-frame{padding:4px 4px 9px;border-radius:9px}body[data-skin=frosted] .calendar-sheet{padding:22px 12px;border-radius:24px}body[data-skin=frosted] .year-grid{gap:17px 12px}body[data-skin=frosted] .year-month{padding:16px 10px;border-radius:19px}body[data-skin=frosted] .year-month-head h2{font-size:28px}body[data-skin=frosted] .year-month-head>span{font-size:9px;padding:3px 6px}body[data-skin=frosted] .month-photo.photo-frame{padding:5px 5px 12px;border-radius:12px;margin:17px 0 18px}body[data-skin=frosted] .month-photo .photo-mount{border-radius:7px}body[data-skin=frosted] .month-photo figcaption{font-size:9px;padding-top:8px}body[data-skin=frosted] .mini-days button{font-size:10px;border-radius:7px}body[data-skin=frosted] .mini-weekdays{font-size:9px}body[data-skin=frosted] .month-empty-note{padding:10px;margin:17px 0 18px;border-radius:12px}body[data-skin=frosted] .month-memory{font-size:10px}body[data-skin=frosted] .pressed-flower{font-size:30px}body[data-skin=frosted] .month-toolbar button{padding:6px 9px;font-size:11px}body[data-skin=frosted] .day-detail{padding:24px 16px;border-radius:22px}body[data-skin=frosted] .archive-totals>div{padding:20px 16px;border-radius:19px}body[data-skin=frosted] .archive-totals strong{font-size:36px}body[data-skin=frosted] .chart-paper{padding:26px 20px;border-radius:23px}body[data-skin=frosted] .future-letter{padding:30px 24px;border-radius:25px}body[data-skin=frosted] .future-letter h1{font-size:31px}body[data-skin=frosted] .future-letter>p{font-size:16px}body[data-skin=frosted] .future-letter:before{width:35px;height:35px;top:20px;right:23px}body[data-skin=frosted] .letter-keepsake{padding:8px 8px 19px;border-radius:17px}body[data-skin=frosted] .wish-card{padding:28px 23px;border-radius:23px}body[data-skin=frosted] .wish-card h3{font-size:22px}body[data-skin=frosted] .wish-number{font-size:37px}body[data-skin=frosted] .record-player-button{border-radius:12px}body[data-skin=frosted][data-view=scene] .record-player-button{border-radius:12px;box-shadow:0 5px 12px #28432a28}body[data-skin=frosted] .scene-heading{top:calc(var(--header-height) + 22px);left:19px;right:19px;max-width:352px;padding:19px 20px;border-radius:22px}body[data-skin=frosted] .scene-heading h1{font-size:28px}body[data-skin=frosted] #welcome{padding:40px 27px;border-radius:25px}body[data-skin=frosted] #welcome h2{font-size:27px}body[data-skin=frosted] #modal{padding:24px 20px;border-radius:23px}}
+
+body[data-skin=frosted] .site-header nav button[aria-current=page]:hover{background:#e2ed54;color:#21291e}
+/* The room title uses darker glass so it remains legible on a bright generated scene. */
+body[data-skin=frosted] .scene-heading{background:#1f392ab8;border-color:#ffffff70}
+/* The landing stays an uninterrupted scene in both styles; no large title panel. */
+body[data-skin=frosted][data-view=scene] .scene-guide{font-family:system-ui,sans-serif;color:#365132;background:transparent;border:0;border-radius:0;letter-spacing:.04em;text-shadow:0 1px 4px #f9ffe5,0 0 18px #faffefd9}
+body[data-skin=frosted][data-view=scene] .scene-hotspot{background:transparent;border:0;box-shadow:none;color:#effeaf;backdrop-filter:none}
+body[data-skin=frosted][data-view=scene] .hotspot-dot{background:transparent;text-shadow:0 0 10px #8aa74fbf,0 0 22px #f5ffc1}
+body[data-skin=frosted][data-view=scene] .record-player-button{border-radius:50%;min-width:60px;background:#ffffff56;border-color:#ffffffa1}
+body[data-skin=frosted][data-view=scene] .scene-footer>.primary,body[data-skin=frosted][data-view=scene] .scene-find-toggle{background:#eff7c585;border-color:#ffffffa1;color:#536c3c}
+body[data-skin=frosted] .scene-insight{background:#f3fae9e8;border-color:#ffffffda;border-radius:20px;color:#526b3d}
+@media(max-width:650px){body[data-skin=frosted][data-view=scene] .record-player-button{min-width:46px;width:46px;height:46px;border-radius:50%}}
+
+body[data-skin=frosted][data-view=scene] .scene-guide:after{background:linear-gradient(90deg,transparent,#66845766 20%,#66845766 80%,transparent);box-shadow:none}
+body[data-skin=frosted] .scene-insight{background:linear-gradient(145deg,#faffefe8,#eef6ecef);border:1px solid #ffffffd6;border-radius:22px;color:#4a6540;backdrop-filter:blur(16px);box-shadow:0 16px 45px #3f5b3b24}
+body[data-skin=frosted] .scene-insight:before{inset:7px;border-radius:16px;border-color:#ffffffa8}
+body[data-skin=frosted] .insight-pin{width:18px;height:18px;left:20px;top:-8px;border-radius:50%;transform:none;background:#e2ed54;box-shadow:0 2px 5px #80904e30}
+body[data-skin=frosted] .insight-eyebrow{color:#7a8c62;letter-spacing:.1em}
+
+body[data-skin=frosted][data-view=scene] #scene:after{background:linear-gradient(0deg,#294d3921,transparent 22%,transparent 86%,#f4fce11a)}
+body[data-skin=frosted][data-view=scene] .scene-atmosphere{filter:blur(24px);opacity:.8}
+body[data-skin=frosted][data-view=scene] .scene-directory{background:#f4fae9ed;border-color:#ffffffd9;border-radius:18px;box-shadow:0 10px 28px #3e5d3420}
+body[data-skin=frosted][data-view=scene] .scene-directory button{background:#ffffff9c;border-color:#ffffffd6;color:#486139;backdrop-filter:none}
