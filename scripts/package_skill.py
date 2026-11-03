@@ -14,7 +14,7 @@ def inventory(root):
     for name in ['SKILL.md','README.md','skill_manifest.json']:
         if (root/name).is_symlink():raise ValueError('发布入口不能是符号链接')
         if (root/name).is_file():files.append(root/name)
-    for directory in ['agents','references','scripts','assets']:
+    for directory in ['references','scripts','assets','agents']:
         for path in (root/directory).rglob('*'):
             if '__pycache__' in path.parts or path.suffix in {'.pyc','.pyo'}:continue
             if path.is_symlink():raise ValueError('发布资源不能包含符号链接')
@@ -30,11 +30,11 @@ def package(root,output,report):
     check=inspect_bundle(root)
     if not check['ok']:raise ValueError('安装预检未通过: '+str(check['missing']))
     files=inventory(root);entries={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
-    manifest=json.loads((root/'skill_manifest.json').read_text(encoding='utf-8-sig'))
+    manifest=json.loads((root/'skill_manifest.json').read_text(encoding='utf-8'))
     if not set(manifest['required_files']).issubset(entries):raise ValueError('发布清单缺必需资源')
     for p in files:
         if p.suffix=='.md':
-            for target in re.findall(r'\]\(([^)]+)\)',p.read_text(encoding='utf-8-sig')):
+            for target in re.findall(r'\]\(([^)]+)\)',p.read_text(encoding='utf-8')):
                 if ':' not in target and not target.startswith('#') and not (p.parent/target.split('#')[0]).exists():raise ValueError('Markdown资源链接缺失: '+str(p))
     output.parent.mkdir(parents=True,exist_ok=True)
     with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:

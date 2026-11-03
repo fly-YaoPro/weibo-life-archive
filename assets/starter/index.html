@@ -2,18 +2,18 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>手账</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="experience.css"><link rel="stylesheet" href="paper.css"><link rel="stylesheet" href="frosted.css"><link rel="stylesheet" href="motion.css"><link rel="stylesheet" href="fusion.css">
+  <title>手账</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="experience.css"><link rel="stylesheet" href="paper.css"><link rel="stylesheet" href="frosted.css"><link rel="stylesheet" href="motion.css">
 </head>
 <body>
   <header class="site-header">
     <a class="brand" href="#review"><span class="brand-mark" aria-hidden="true"></span><span id="brand-title">手账</span></a>
-    <nav aria-label="主导航"><button data-view="scene" hidden>记忆小屋</button><button data-view="review">回看</button><button data-view="calendar">日历</button><button data-view="future">后续计划</button></nav>
+    <nav aria-label="主导航"><button data-view="scene" hidden>记忆小屋</button><button data-view="review">回看</button><button data-view="calendar">年历</button><button data-view="future">给未来的信</button></nav>
     <button id="share-button" class="quiet">导出分享图</button>
   </header>
   <main id="main">
     <section id="scene" aria-label="记忆场景" hidden></section>
 
-    <section id="review" aria-label="个人回看"><p id="scope-note" class="scope-note"></p><div class="pager" id="pager" aria-label="回看翻页"></div><div id="spread"></div></section>
+    <section id="review" aria-label="个人回看"><div class="pager" id="pager" aria-label="回看翻页"></div><div id="spread"></div></section>
     <section id="calendar" aria-label="年历档案" hidden>
       <section id="stats" aria-label="这些日子的回顾"></section>
       <div class="section-heading"><div><p class="eyebrow">把日子翻回来</p><h2>一年，一页</h2></div><div class="search-controls"><label class="search-label">搜索全部记录<input id="search" type="search" placeholder="搜一个词，找回那一天"></label><label id="category-label" hidden>品类<select id="category"><option value="all">全部品类</option></select></label></div></div>
@@ -28,8 +28,7 @@
     <section id="future" aria-label="给未来的信" hidden><div id="letter-content"></div>
     <section id="plans" aria-label="留给明天的小事">
       <div class="section-heading"><div><p class="eyebrow">日子还长，留一些小小期待</p><h2 id="plan-heading">留给明天的小事</h2></div><span class="wish-seal" aria-hidden="true">明天见</span></div>
-      <div class="plan-toolbar"><label>月份<select id="plan-month"><option value="all">全部</option></select></label><button id="add-plan">新增计划</button><button id="export-plans">备份计划</button><label class="button">导入备份<input id="import-plans" type="file" accept="application/json" hidden></label><button id="restore-plans">恢复上一版</button></div>
-      <p id="storage-note" class="muted"></p><div id="plan-list"></div>
+      <div id="plan-list"></div>
     </section>
     </section>
   </main>
@@ -45,5 +44,5 @@
   </dialog>
   <p id="notice" role="status" hidden></p>
   <div id="music-control" hidden></div>
-  <script src="journal-assets.js"></script><script src="journal-data.js"></script><script src="core.js"></script><script src="reader.js"></script><script src="app.js"></script><script src="plans.js"></script><script src="motion.js"></script><script src="share.js"></script><script src="experience.js"></script>
+  <script src="journal-data.js"></script><script src="core.js"></script><script src="reader.js"></script><script src="app.js"></script><script src="motion.js"></script><script src="share.js"></script><script src="experience.js"></script>
 </body></html>

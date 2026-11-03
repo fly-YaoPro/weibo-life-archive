@@ -31,7 +31,7 @@ class Checks(unittest.TestCase):
             root=Path(d);name,rows=fixture(root,kind);mutator(root,name,rows);r=check(root,kind)
             self.assertEqual(r['ok'],expected,r)
     def test_weibo_valid(self):self.run_case('weibo',lambda *a:None,True)
-    def test_image_only_weibo_is_valid(self):
+    def test_image_only_without_download_is_incomplete(self):
         def mutate(r,n,x):
             x[0]['text']=''
             x[0]['images']=[{'origin':'platform','source_url':'https://example.org/fixture.jpg','download_status':'unavailable','thumb_path':None,'large_path':None}]
@@ -127,20 +127,20 @@ class Checks(unittest.TestCase):
             runtime['story']['themes'].append({**runtime['story']['themes'][0],'id':'runtime-duplicate'})
             js.write_text('window.JOURNAL_DATA = '+json.dumps(runtime,ensure_ascii=False)+';\n')
             result=check(output,'weibo','final');self.assertFalse(result['ok'])
-            self.assertTrue(any('journal-data.js' in error and '重复' in error for error in result['errors']))
+            self.assertTrue(any('journal-data.js' in error and 'differs' in error for error in result['errors']))
             js.write_text(original_js)
             for mutation,match in ((lambda s:s['overview'].update(source_ids=[]),'来源'),
                                    (lambda s:s['themes'][0].update(excerpt='凭空编造的原话'),'摘句'),
                                    (lambda s:s.update(wishes=[{'id':'w','title':'测试','text':'测试','source_ids':['missing']}]),'来源'),
-                                   (lambda s:s['themes'].append({**s['themes'][0],'id':'duplicate'}),'重复')):
+                                   (lambda s:s['themes'][0].update(source_ids=['missing']),'来源')):
                 changed=copy.deepcopy(base);mutation(changed);write(output,'story.json',changed)
                 result=check(output,'weibo','final');self.assertFalse(result['ok'],result)
                 self.assertTrue(any(match in error for error in result['errors']),result)
             meta['presentation']={'grounding_required':True};write(output,'project_meta.json',meta)
             base['overview']['portrait']={'text':'一位有两个孩子的医生。','source_ids':['demo-1']};write(output,'story.json',base)
             result=check(output,'weibo','final');self.assertFalse(result['ok'])
-            self.assertTrue(any('锚点' in error for error in result['errors']))
-    def test_packed_html_checks_repetition_in_actual_embedded_data(self):
+            self.assertTrue(any('differs' in error for error in result['errors']))
+    def test_packed_html_rejects_duplicate_navigation_ids(self):
         from build_journal import build
         from pack_html import pack
         from test_build_journal import fixture as build_fixture
@@ -151,7 +151,7 @@ class Checks(unittest.TestCase):
             self.assertTrue(check(target,'weibo','final')['ok'])
             html=target.read_text();import re
             match=re.search(r'window.JOURNAL_DATA = (.*?);\n',html)
-            data=json.loads(match.group(1));data['story']['themes'].append({**data['story']['themes'][0],'id':'duplicate'})
+            data=json.loads(match.group(1));data['story']['themes'].append({**data['story']['themes'][0],'id':data['story']['themes'][0]['id']})
             html=html[:match.start(1)]+json.dumps(data,ensure_ascii=False)+html[match.end(1):]
             target.write_text(html)
             result=check(target,'weibo','final');self.assertFalse(result['ok'],result)

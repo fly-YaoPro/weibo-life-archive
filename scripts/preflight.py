@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check the installed bundle without probing accounts, credentials or paid tools."""
 import argparse
+import importlib.util
 import hashlib
 import json
 from pathlib import Path
@@ -32,7 +33,12 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--skill-root", type=Path, default=Path(__file__).resolve().parents[1])
     p.add_argument("--capabilities", type=Path)
+    p.add_argument("--runtime", action="store_true", help="Inspect local optional dependencies; does not probe real browser or hosting")
     a = p.parse_args()
     result = inspect_bundle(a.skill_root, load(a.capabilities) if a.capabilities else None)
+    if a.runtime:
+        result['local_dependencies'] = {name: importlib.util.find_spec(module) is not None
+            for name,module in [('pillow','PIL'),('playwright','playwright')]}
+        result['runtime_note'] = 'Use the available browser for authorized collection and the bounded desktop/mobile scene click check in references/scene-hotspots.md. Static checks and hosting completion do not verify clicks; a full-site browser suite is not required.'
     print(json.dumps(result, ensure_ascii=False, indent=2))
     raise SystemExit(0 if result["ok"] else 1)

@@ -61,6 +61,10 @@ body[data-view=scene] .scene-atmosphere{filter:blur(24px);opacity:.8}
 .scene-dust i{position:absolute;width:3px;height:3px;border-radius:50%;background:#fff9dc;box-shadow:0 0 7px #fff4b68c;opacity:0;animation:room-dust calc(8s + var(--mote)*.4s) ease-in-out infinite;animation-delay:calc(var(--mote)*-.8s)}
 @keyframes room-dust{0%,100%{opacity:0;transform:translate(0,8px)}30%,65%{opacity:.5}85%{opacity:0;transform:translate(9px,-23px)}}
 body[data-view=scene] .scene-hotspot{width:44px;height:44px;padding:0;justify-content:center;background:transparent;border:0;box-shadow:none;overflow:visible;color:#fff1bc;backdrop-filter:none}
+body[data-view=scene] .scene-hotspot .hotspot-marker{position:absolute;left:50%;top:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);pointer-events:none}
+body[data-view=scene] .scene-hotspot[data-calibrated=true]{transform:none;min-width:0;min-height:0;max-width:none;max-height:none;border-radius:10px;cursor:pointer;touch-action:manipulation;transition:background-color .15s,outline-color .15s}
+body[data-view=scene] .scene-hotspot[data-calibrated=true]:hover{transform:none;border-radius:10px;background:rgba(255,241,188,.09)}
+body[data-view=scene] .scene-hotspot[data-calibrated=true]:focus-visible{transform:none;border-radius:10px;outline:2px solid #fff1bc;outline-offset:2px}
 body[data-view=scene] .scene-hotspot .hotspot-dot{background:transparent;width:29px;height:29px;font-size:24px;text-shadow:0 0 5px #a8753680,0 0 16px #fff4a9;box-shadow:none;animation:object-beacon 4.8s ease-in-out infinite;animation-delay:calc(var(--spot)*-.7s)}
 @keyframes object-beacon{0%,100%{opacity:.64;transform:scale(.96)}50%{opacity:1;transform:scale(1.09)}}
 body[data-view=scene] .hotspot-label{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translate(-50%,4px);opacity:0;white-space:nowrap;font-size:13px;font-weight:500;background:#fff8e5e6;color:#6a4d2e;padding:5px 12px;border-radius:4px;border:1px solid #ddcda267;box-shadow:2px 3px 0 #956f3210;transition:opacity .22s,transform .22s;pointer-events:none}

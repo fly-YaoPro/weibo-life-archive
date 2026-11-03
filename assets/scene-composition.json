@@ -1,7 +1,7 @@
 {
   "purpose": "宿主工具无关的首页美术与构图约束；实际物件由Agent从真实记录选择",
   "frame": {
-    "aspect_hint": "16:10",
+    "aspect_hint": "16:9",
     "camera": "平视或轻俯视，前中后景连贯，完整入画，HTML等比适配全部画幅",
     "guide_safe_area": "顶部中央8—15%高度，低信息背景",
     "objects_safe_area": "主要物件在20—80%水平范围内分散排列，避免过度聚集",

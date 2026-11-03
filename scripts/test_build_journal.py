@@ -58,7 +58,7 @@ class BuilderTests(unittest.TestCase):
 
     def test_readonly_wishes_do_not_need_due_dates(self):
         self.mutate(lambda s:s.update(plans=[],wishes=[{"id":"w1","title":"再翻一页旧书","text":"给喜欢的事留一点时间。","source_ids":["demo-1"]}]))
-        with self.assertRaisesRegex(ValueError,"plans"):prepare(self.root,"paper")
+        self.assertEqual(len(prepare(self.root,"paper")["story"]["wishes"]),1)
     def test_unknown_wish_source_is_blocked(self):
         self.mutate(lambda s:s.update(wishes=[{"id":"w1","title":"小愿望","text":"短记","source_ids":["missing"]}]))
         with self.assertRaises(ValueError):prepare(self.root,"paper")
@@ -80,22 +80,23 @@ class BuilderTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             prepare(self.root, "paper")
 
-    def test_duplicate_review_pages_rejected_before_any_output_written(self):
+    def test_repeated_prose_does_not_gate_build_with_distinct_navigation_ids(self):
         def duplicate(story):
             theme = copy.deepcopy(story["themes"][0]); theme["id"] = "t2"
             story["themes"].append(theme)
         self.mutate(duplicate)
-        output = Path(self.temp.name) / "duplicate"
-        with self.assertRaisesRegex(ValueError, "摘句重复|正文重复"):
-            build(self.root, output, "paper")
-        self.assertFalse(output.exists())
+        output = Path(self.temp.name) / "repeated-prose"
+        build(self.root, output, "paper")
+        self.assertTrue((output/'index.html').is_file())
+        self.mutate(lambda s:s['themes'][1].update(id='t1'))
+        with self.assertRaisesRegex(ValueError, '主题ID'): prepare(self.root, 'paper')
 
-    def test_strict_editorial_ids_alone_cannot_pass(self):
+    def test_source_ids_are_sufficient_without_keyword_coverage(self):
         meta = json.loads((self.root / "project_meta.json").read_text())
         meta["presentation"] = {"grounding_required": True}
         write(self.root, "project_meta.json", meta)
-        with self.assertRaisesRegex(ValueError, "锚点"):
-            prepare(self.root, "paper")
+        data=prepare(self.root,"paper")
+        self.assertFalse(data['narrative_validation']['keyword_matching_required'])
 
     def test_video_cover_remains_separate_and_is_copied(self):
         from test_pipeline import png

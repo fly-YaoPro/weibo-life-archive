@@ -53,8 +53,6 @@ class HistoryTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(); self.root = Path(self.temporary.name)
         initialize(self.root, UID, 'https://weibo.com/u/' + UID, '2025-01-01', '2025-12-31', mode='full')
-        meta = load(self.root / 'project_meta.json'); meta['collection']['include_video_covers'] = True
-        save(self.root / 'project_meta.json', meta)
         self.clock = Clock()
         self.assertEqual(configure_history(Browser([]), self.root, SELECTORS, REQUEST)['status'], 'configured')
     def tearDown(self): self.temporary.cleanup()
@@ -368,7 +366,7 @@ print(json.dumps(collect_history(Browser(),root,max_pages=1,clock=clock,sleep=la
         self.assertEqual(record['url'], 'https://weibo.com/' + UID + '/' + mid_to_bid(record['id']))
         self.assertTrue(record['is_video']); self.assertEqual(record['images'], [])
         self.assertEqual(record['video']['covers'][0]['large_url'], 'https://wx1.sinaimg.cn/cover-big.png')
-        materialize(self.root); self.assertEqual(plan(self.root)['jobs'], 2)  # Keep both observed archive variants.
+        materialize(self.root); self.assertEqual(plan(self.root)['jobs'], 1)  # 单尺寸：一个封面只生成一个 job
         class Response(io.BytesIO):
             def geturl(self): return 'https://wx1.sinaimg.cn/cover.png'
         class Opener:
@@ -410,7 +408,7 @@ print(json.dumps(collect_history(Browser(),root,max_pages=1,clock=clock,sleep=la
                 self.assertIsInstance(cover['large_url'], str)
                 self.assertIsInstance(cover['thumb_url'], str)
         manifest = plan(self.root)
-        self.assertEqual(manifest['jobs'], 10)  # Both observed variants are retained by default.
+        self.assertEqual(manifest['jobs'], 5)  # 单尺寸：5 个封面各一个 job（旧多尺寸逻辑为 10）
         self.assertTrue(all(isinstance(job['url'], str) for job in load(self.root / 'media-manifest.json')['jobs']))
         malformed = post(5186829667533460, is_video=True, video={'covers': [{'origin': 'platform', 'source_url': {'url': big}}]})
         with self.assertRaisesRegex(ValueError, 'URL必须是字符串'): ingest(self.root, [malformed])
@@ -418,16 +416,16 @@ print(json.dumps(collect_history(Browser(),root,max_pages=1,clock=clock,sleep=la
     def test_missing_photo_metadata_and_collapsed_text_stay_pending(self):
         photos = {str(index): {'large': {'url': 'https://wx1.sinaimg.cn/%d.jpg' % index}} for index in range(9)}
         ingest(self.root, [post(100, pic_ids=[str(index) for index in range(12)], pic_infos=photos),
-                           post(99, text='摘要<a href="/detail/99">展开全文</a>'),
-                           post(98, textLength=9999),
-                           post(97, page_info={'object_type': 'video'})])
+                           post(99, text='摘要<a href="/detail/99">展开全文</a>', pic_num=0),
+                           post(98, textLength=9999, pic_num=0),
+                           post(97, page_info={'object_type': 'video'}, pic_num=0)])
         result = materialize(self.root)
         records = {r['id']: r for r in load(self.root / 'records.json')}
         self.assertEqual(records['100']['expected_image_count'], 12)
         self.assertEqual(len(records['100']['images']), 9)
         self.assertEqual(records['99']['text_status'], 'pending')
         self.assertEqual(records['98']['text_status'], 'complete')
-        self.assertEqual((result['pending_details'], result['pending_photo_details'], result['pending_video_covers']), (4, 1, 1))  # The fourth record has an unknown source photo count, so remains pending.
+        self.assertEqual((result['pending_details'], result['pending_photo_details'], result['pending_video_covers']), (3, 1, 1))
 
     def test_window_filter_precedes_irrelevant_media_normalization(self):
         malformed_media = {'video': {'covers': [{'origin': 'platform', 'source_url': {'url': 'bad'}}]}}

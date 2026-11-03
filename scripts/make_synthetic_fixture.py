@@ -35,7 +35,7 @@ def create(output, demo_html):
         return new
     def image(old, name):
         path = asset(old, "images/" + name + ".jpg")
-        return {"image_id":name,"large_note":"Explicit synthetic test fixture uses one small test image for both views", "origin": "synthetic_fixture", "provided_reference": source_label,
+        return {"origin": "synthetic_fixture", "provided_reference": source_label,
                 "download_status": "saved", "thumb_path": path, "large_path": path, "original_path": path,
                 "caption": "合成演示素材，非微博历史照片"}
     keys = ["plant", "book", "road", "music", "desk", "flower"]
@@ -56,8 +56,6 @@ def create(output, demo_html):
                     "url": "https://example.invalid/synthetic-weibo/demo-video", "images": [], "text_status": "complete", "fixture": True,
                     "is_video": True, "video": {"source_url": "https://example.invalid/synthetic-weibo/demo-video", "cover_status": "observed",
                                                  "covers": [image("images/original-103-0.jpg", "video-cover")]}})
-    for r in records:
-        r.update(expected_image_count=len(r['images']), image_inventory_status='complete', image_count_basis='Explicit synthetic fixture inventory, not a platform observation')
     evidence = [{"source_id": r["id"], "quote": r["text"].split("。")[0] + "。", "supports": [term]}
                 for r, term in zip(records, terms + ["薄荷", "曲子"])]
     all_ids = [r["id"] for r in records]
@@ -100,7 +98,6 @@ def create(output, demo_html):
              "bgm": {**data["story"]["bgm"], "path": asset("audio/warm-lights.wav", "audio/warm-lights.wav"), "reference": "既有明确合成demo中的prepare_music.py原创合成音频；非本轮采集"}}
     story["share"]["entries"][3] = {"source_id": "demo-video", "title": "听见练习里的小停顿",
                                       "text": "把练习曲子的片段录下来，才听见了之前遗漏的停顿。下一次怎么练，也因此有了更具体的方向。"}
-    story['plans']=[{'id':'plan-'+str(n),'title':w['title'],'reason':w['text'],'month':'2027-0'+str(n+1),'source_ids':w['source_ids']} for n,w in enumerate(story['wishes'])]
     profile = {"uid": "demo-synthetic", "name": "合成演示 · 晴日慢慢", "source_url": "https://weibo.com/u/demo-synthetic", "captured_at": "2026-11-01T00:00:00+08:00",
                "avatar_origin": "synthetic_fixture", "provided_reference": source_label, "avatar_path": asset("profile/avatar.png", "profile/avatar.png"),
                **{key: {"display": "—", "value": None, "exact": False, "observed": False} for key in ("followers", "following", "engagement")}}
@@ -111,6 +108,11 @@ def create(output, demo_html):
             "fixture": {"synthetic": True, "label": "合成离线功能夹具，不是真实微博/头像/用户经历", "source": source_label, "no_live_collection": True, "no_new_image_generation": True}}
     coverage = [{"year": year, "status": "selected", "scanned_count": None, "saved_count": sum(r["created_at"].startswith(str(year)) for r in records),
                  "selected_count": sum(r["created_at"].startswith(str(year)) for r in records), "note": "合成测试年份，不是真实账号覆盖证明"} for year in (2023, 2024, 2025)]
+    for record in records:
+        record.update(expected_image_count=len(record['images']), image_inventory_status='complete',
+                      image_count_basis='Explicit synthetic fixture inventory; not real collection proof')
+        for index, im in enumerate(record['images']):
+            im['image_id'] = record['id'] + '-fixture-' + str(index)
     for name, value in (("project_meta.json", meta), ("records.json", records), ("story.json", story), ("coverage.json", coverage)):
         save(output / name, value)
     manifest = {"synthetic": True, "purpose": "offline functional regression; no real collection or generated-art approval", "recovered_from": str(demo_html),

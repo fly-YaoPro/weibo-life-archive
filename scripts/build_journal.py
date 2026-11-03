@@ -5,15 +5,12 @@ import hashlib
 import json
 import re
 import shutil
-import base64
-import mimetypes
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from archive_common import BEIJING, load as load_optional, project_file
 from archive_pipeline import metrics as calculate_metrics
 from experience import validate_experience, validate_narrative, synthetic_fixture
 from runtime_contract import validate_runtime, validate_video
-from audit_images import audit as audit_images
 
 
 def load(path):
@@ -45,7 +42,7 @@ def normalize(root, meta, kind):
         images = []
         for im in values:
             # Web 端默认展示直接使用原图（original/large），缩略图仅作最终回退，避免列表图被拉伸发虚。
-            path = im.get("display_path") or im.get("original_path") or im.get("large_path") or im.get("thumb_path")
+            path = im.get("original_path") or im.get("large_path") or im.get("thumb_path")
             if not path:
                 continue
             fixture_image = synthetic_fixture(meta) and im.get("origin") == "synthetic_fixture" and bool(im.get("provided_reference"))
@@ -57,8 +54,7 @@ def normalize(root, meta, kind):
             images.append({"path": path, "large": large, "original": im.get("original_path") or large,
                            "caption": im.get("caption", ""), "origin": im.get("origin", "platform"),
                            "provided_reference": im.get("provided_reference"),
-                           "source_url": im.get("source_url"), "download_status": im.get("download_status")})
-            images[-1].update(image_id=im.get('image_id'), large_note=im.get('large_note'), aliases=[im[k] for k in ('thumb_path','large_path','original_path','display_path') if im.get(k)])
+                           "source_url": im.get("source_url"), "download_status": im.get("download_status"), "image_id": im.get("image_id")})
         return images
     for r in source:
         if kind == "weibo":
@@ -70,8 +66,7 @@ def normalize(root, meta, kind):
                          "images": images, "url": r.get("url"), "links": r.get("links", []),
                          "screenshot": r.get("screenshot"), "text_status": r.get("text_status", "unknown"),
                          "expected_image_count": r.get("expected_image_count"),
-                         "image_inventory_status": r.get('image_inventory_status'),
-                         "image_count_basis": r.get('image_count_basis')})
+                         "image_inventory_status": r.get("image_inventory_status"), "image_count_basis": r.get("image_count_basis")})
             if r.get("is_video") or r.get("video"):
                 video = r.get("video")
                 validate_video(r, meta)
@@ -99,14 +94,21 @@ def normalize(root, meta, kind):
     return sorted(rows, key=lambda r: (r["date"], r["id"]))
 
 
-def prepare(root, skin):
-    meta, story, coverage = (load(root / p) for p in ("project_meta.json", "story.json", "coverage.json"))
+def prepare(root, skin, story=None, pending_music=False):
+    from story_tools import compile_project, compile_draft
+    root = Path(root)
+    meta, coverage = (load(root / p) for p in ("project_meta.json", "coverage.json"))
+    story = compile_project(root) if story is None else compile_draft(root, story)
+    if pending_music and not story.get('bgm'):
+        meta.setdefault('presentation', {}).pop('bgm_enabled', None)
     kind = meta["platform"]
     if kind not in {"weibo", "taobao"} or (kind == "taobao" and skin != "collage") or (kind == "weibo" and skin == "collage"):
         raise ValueError("微博使用 paper/frosted；淘宝使用 collage")
-    image_audit = audit_images(root, meta) if kind == 'weibo' else None
-    if image_audit and not image_audit['ok']:
-        raise ValueError('图片未齐，不能构建完成版：' + '; '.join(image_audit['errors'][:5]))
+    if kind == 'weibo':
+        from audit_images import audit
+        image_audit = audit(root, meta)
+        if not image_audit['ok']:
+            raise ValueError('图片未齐，不能构建完成版：' + '; '.join(image_audit['errors']))
     rows = normalize(root, meta, kind)
     contract = validate_runtime(meta, rows, story, root=root)
     by_id = {r["id"]: r for r in rows}
@@ -121,19 +123,19 @@ def prepare(root, skin):
             raise ValueError("回顾、发现与计划必须关联真实字符串来源ID")
         return ids
     overview = story.get("overview", {})
-    if not overview.get("text", "").strip() or len(overview["text"]) > 200:
-        raise ValueError("先完成200字以内的真实回顾，不把数据范围说明当总结")
-    if not overview.get("headline", "").strip() or len(overview["headline"]) > 36:
-        raise ValueError("overview.headline 需由本批数据撰写，最多36字，不硬编码通用金句")
+    if not overview.get("text", "").strip():
+        raise ValueError("先完成非空真实回顾，不把数据范围说明当总结")
+    if not overview.get("headline", "").strip():
+        raise ValueError("overview.headline 需由本批数据撰写非空标题")
     refs(overview)
     opening, portrait = overview.get("opening"), overview.get("portrait")
-    if opening is not None and (not isinstance(opening,str) or not opening.strip() or len(opening)>100):
-        raise ValueError("封面开场白需100字内的非空文字")
+    if opening is not None and (not isinstance(opening,str) or not opening.strip()):
+        raise ValueError("封面开场白需非空文字")
     if portrait is not None:
-        if not isinstance(portrait,dict) or not isinstance(portrait.get("text"),str) or not portrait["text"].strip() or len(portrait["text"])>160:
-            raise ValueError("封面画像需160字内的有据解析")
+        if not isinstance(portrait,dict) or not isinstance(portrait.get("text"),str) or not portrait["text"].strip():
+            raise ValueError("封面画像需非空有据解析")
         refs(portrait)
-        if not isinstance(portrait.get("tags",[]),list) or any(not isinstance(t,str) or len(t)>12 for t in portrait.get("tags",[])):
+        if not isinstance(portrait.get("tags",[]),list) or any(not isinstance(t,str) for t in portrait.get("tags",[])):
             raise ValueError("画像标签需简短字符串数组")
     if meta.get("presentation",{}).get("cover_required") and (not opening or not portrait):
         raise ValueError("完整封面缺开场白或有据画像，请先由Agent完成内容")
@@ -163,13 +165,11 @@ def prepare(root, skin):
         raise ValueError("archive_view 只能为 auto/calendar/timeline")
     wishes = story.get("wishes", [])
     if not isinstance(wishes, list): raise ValueError("wishes需为数组")
-    if meta.get("presentation", {}).get("three_wishes_required") and len(wishes) != 3:
-        raise ValueError("留给明天的小事需由Agent整理为恰好3件，不能截断或自动补空项")
+    if meta.get("presentation", {}).get("three_wishes_required") and not wishes:
+        raise ValueError("留给明天的小事需为非空数组；数量按内容确定")
     share = story.get("share", {})
     if meta.get("presentation", {}).get("share_letter_required") and (not isinstance(share.get("letter_text"), str) or not share["letter_text"].strip()):
         raise ValueError("先由Agent浓缩未来来信到share.letter_text，再生成分享图")
-    if share.get("letter_text") and len(share["letter_text"]) > 240:
-        raise ValueError("分享图中的来信请浓缩到240字以内，保留有据温暖内容")
     if meta.get("presentation",{}).get("share_entries_required") and not share.get("entries"):
         raise ValueError("先按真实微博逐条提炼分享节点share.entries，日期和照片必须属于同一source_id")
     for entry in share.get("entries", []):
@@ -182,8 +182,8 @@ def prepare(root, skin):
             raise ValueError("小愿望需唯一ID、标题、温暖短记和真实来源ID")
         wish_ids.add(wish["id"])
     plans = story.setdefault("plans", [])
-    if not plans:
-        raise ValueError("story.plans 为空：先由 Agent 从真实记录生成具体、可选的计划，再构建；来信和只读愿望不能替代可编辑计划")
+    if not plans and not wishes and not story.get("letter"):
+        raise ValueError("story.plans 为空：先由 Agent 从真实记录生成3—6条建议，再构建；先完成未来来信或有据的小愿望")
     plan_ids = set()
     for p in plans:
         refs(p)
@@ -192,12 +192,11 @@ def prepare(root, skin):
         plan_ids.add(p["id"])
     # Display image choices must actually belong to cited records, not a global unrelated gallery.
     for section in [overview] + themes:
-        allowed = {alias: (r, im) for i in section["source_ids"] for r in [by_id[i]]
-                   for im in r["images"] + [{**cover, "media_kind": "video-cover"} for cover in r.get("video", {}).get("covers", [])]
-                   for alias in [im["path"]]+im.get("aliases",[])}
+        allowed = {im["path"]: (r, im) for i in section["source_ids"] for r in [by_id[i]]
+                   for im in r["images"] + [{**cover, "media_kind": "video-cover"} for cover in r.get("video", {}).get("covers", [])]}
         choices = section.get("image_paths", [])
         if not choices:
-            choices = list(dict.fromkeys(im["path"] for _,im in allowed.values()))[:3]
+            choices = list(allowed)[:3]
         if len(choices) != len(set(choices)):
             raise ValueError("同页图片重复")
         section["images"] = []
@@ -207,8 +206,8 @@ def prepare(root, skin):
             r, im = allowed[path]
             caption = section.get("image_captions", {}).get(path) or im["caption"] or r["title"]
             section["images"].append({**im, "date": r["date"], "record_id": r["id"], "caption": caption})
-    if kind == "weibo" and any(r["images"] for r in rows) and not any(s["images"] for s in [overview] + themes):
-        raise ValueError("回看页面全部无图：已下载的真实配图不能全部藏到档案里")
+    if kind == 'weibo' and any(r['images'] for r in rows) and not any(s['images'] for s in [overview] + themes):
+        raise ValueError('回看页面全部无图：已有真实配图不能全部藏到年历里')
     actual = {"start": rows[0]["date"], "end": rows[-1]["date"]}
     meta["actual_range"] = actual
     meta["plan_year"] = int(meta.get("plan_year") or datetime.now(BEIJING).year + 1)
@@ -239,9 +238,8 @@ def prepare(root, skin):
             # Older imports do not contain a scan index: counts refer only to saved records.
             report = calculate_metrics(meta, load(root / "records.json"), [], load(root / "records.json"))
             report["basis"] = "saved_records_only"
-    return {"version": 4, "project_key": project_key, "skin": skin, "meta": meta, "story": story,
+    return {"version": 3, "project_key": project_key, "skin": skin, "meta": meta, "story": story,
             "coverage": coverage, "records": rows, "scope": scope, "metrics": report, "narrative_validation": narrative,
-            "image_audit": image_audit,
             "extra_paths": sorted(extra_paths)}
 
 
@@ -256,19 +254,13 @@ def build(source, output, skin, template=None):
     if not template.is_dir() or output == template or output.is_relative_to(template) or template.is_relative_to(output):
         raise ValueError("模板需为独立现有目录，不能与输出目录嵌套或覆盖")
     output.mkdir(parents=True, exist_ok=True)
-    for filename in ("index.html", "styles.css", "app.js", "core.js", "plans.js", "fusion.css", "experience.js", "experience.css", "frosted.css", "paper.css", "reader.js", "motion.js", "motion.css", "share.js", "favicon.svg"):
+    for filename in ("index.html", "styles.css", "app.js", "core.js", "experience.js", "experience.css", "frosted.css", "paper.css", "reader.js", "motion.js", "motion.css", "share.js", "favicon.svg"):
         shutil.copyfile(template / filename, output / filename)
     js = "window.JOURNAL_DATA = " + json.dumps(data, ensure_ascii=False).replace("<", "\\u003c") + ";\n"
     (output / "journal-data.js").write_text(js, encoding="utf-8")
-    if data.get('image_audit'):
-        (output / 'image-audit.json').write_text(json.dumps(data['image_audit'], ensure_ascii=False, indent=2), encoding='utf-8')
     paths = {im[k] for r in data["records"] for im in r["images"] for k in ("path", "large")}
     paths.update(im[k] for r in data["records"] for im in r.get("video", {}).get("covers", []) for k in ("path", "large"))
     paths.update(data["extra_paths"])
-    if data["meta"]["platform"]=="weibo":
-        paths.update(im[k] for row in load(source/"records.json") for im in row.get("images",[]) for k in ("thumb_path","large_path","original_path","display_path") if im.get(k))
-    embedded = {name: 'data:' + (mimetypes.guess_type(name)[0] or 'application/octet-stream') + ';base64,' + base64.b64encode(project_file(source,name).read_bytes()).decode('ascii') for name in paths}
-    (output / 'journal-assets.js').write_text('window.JOURNAL_ASSETS=' + json.dumps(embedded,ensure_ascii=False).replace('<','\\u003c') + ';\n',encoding='utf-8')
     for name in paths:
         target = output / name
         target.parent.mkdir(parents=True, exist_ok=True)

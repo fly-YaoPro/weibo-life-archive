@@ -98,20 +98,12 @@ def verify(project, report_dir, executable=None):
                 assert page.locator('header button[data-view=stats]').count()==0
                 assert page.locator('#calendar>#stats').count()==1
                 checks[-1]['archive_summary_merged_into_calendar']=True
-                # Plans are seeded from records and remain editable after reload.
+                # This is a read-only retrospective; no task manager belongs in the letter.
                 page.locator('button[data-view="future"]').click()
-                assert page.locator('#add-plan,#export-plans,#import-plans,#restore-plans,#storage-note').count()==5
-                assert page.locator('.plan-card').count()>0
-                page.locator('.plan-card .plan-actions').first.get_by_role('button',name='编辑',exact=True).click()
-                page.get_by_label('要做什么',exact=True).fill('合成验收：保留手动修改')
-                page.get_by_role('button',name='保存',exact=True).click()
-                page.reload(); page.wait_for_function('window.JournalPlans')
-                page.evaluate("JournalUI.switchView('future')")
-                assert '合成验收：保留手动修改' in page.locator('#plan-list').inner_text()
-                with page.expect_download() as exported:
-                    page.locator('#export-plans').click()
-                exported.value.save_as(report_dir/f'{width}-plans.json')
-                checks[-1]["editable_plan_persists_and_exports"] = True
+                assert page.locator('#add-plan,#export-plans,#import-plans,#restore-plans,#storage-note').count()==0
+                assert page.locator('#plans input,#plans textarea,.plan-actions').count()==0
+                if page.evaluate("window.JOURNAL_DATA.meta.presentation?.three_wishes_required"):assert page.locator(".wish-card").count()==3
+                checks[-1]["read_only_future_wishes"] = True
                 page.locator('button[data-view="review"]').click()
                 page.wait_for_function('!window.JournalMotion.busy')
                 page.evaluate("window.JournalUI.go({view:'review',theme_id:'overview'})")
@@ -169,12 +161,10 @@ def verify(project, report_dir, executable=None):
                     assert page.evaluate("Array.from(document.querySelectorAll('#'+document.body.dataset.view+' img')).every(im=>!!im.closest('.photo-frame')||(im.matches('.profile-avatar')&&!!im.closest('.user-profile')))"), 'unframed photo'
                 checks[-1]["photo_frames_and_uncropped_month_photos"] = True
                 page.locator("#share-button").click()
-                page.get_by_label('包含微博原图',exact=True).check()
-                page.get_by_role('button',name='生成预览',exact=True).click()
                 page.get_by_role("button",name="下载 PNG",exact=True).wait_for(state="visible")
                 page.wait_for_function("!document.querySelector('.share-toolbar .primary').disabled")
                 assert page.locator(".share-preview-image").count()>0
-                assert page.locator(".share-preview").evaluate("e=>e.scrollHeight>e.clientHeight || [...e.querySelectorAll('img')].every(i=>i.getBoundingClientRect().bottom<=e.getBoundingClientRect().bottom+2)"), "share preview neither fits nor scrolls"
+                assert page.locator(".share-preview").evaluate("e=>e.scrollHeight>e.clientHeight"), "share preview cannot scroll"
                 assert page.get_by_role("button",name="复制图片",exact=True).is_enabled()
                 with page.expect_download() as event:
                     page.get_by_role("button", name="下载 PNG", exact=True).click()
@@ -186,9 +176,12 @@ def verify(project, report_dir, executable=None):
                 assert page.locator("#modal").is_visible()
                 page.locator("#close-modal").click()
                 checks[-1]["share_png_1080_dynamic_height"] = True
-                page.evaluate("JournalUI.switchView('review')")
-                assert page.locator('#scope-note').inner_text().startswith(page.evaluate('JOURNAL_DATA.scope'))
-                checks[-1]["actual_scope_and_selection_label_preserved"] = True
+                for view in views:
+                    page.evaluate('view=>window.JournalUI.switchView(view)',view)
+                    text=page.locator('#'+view).inner_text()
+                    for unwanted in ['更早范围未完整收录','由真实片段织成的创作意象','CC BY 4.0','修改保存在当前浏览器','JSON 备份','备份计划','合并导入','恢复合并前版本']:
+                        assert unwanted not in text, unwanted
+                checks[-1]["no_production_notices_or_task_tools"] = True
                 if "scene" in views:
                     page.locator('header button[data-view="scene"]').click()
                     player=page.locator('.record-player-button').bounding_box()
@@ -220,8 +213,7 @@ def verify(project, report_dir, executable=None):
                 broken = page.evaluate("Array.from(document.images).filter(i=>i.complete&&!i.naturalWidth).length")
                 assert broken == 0, "broken local images"
             except Exception as error:
-                import traceback
-                errors.append(f"{width}x{height}: {type(error).__name__}: {error}\n{traceback.format_exc()}")
+                errors.append(f"{width}x{height}: {type(error).__name__}: {error}")
             finally:
                 context.close()
         browser.close()

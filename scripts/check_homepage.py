@@ -57,6 +57,19 @@ def check(html, output, executable=None):
                 hotspots = page.evaluate("JOURNAL_DATA.story.scene.hotspots")
                 assert len(hotspots) >= 3, "完整场景缺少关键物件"
                 for index, hotspot in enumerate(hotspots):
+                    # Do not let a working directory hide a broken object hit region.
+                    if hotspot.get('bounds'):
+                        for fx, fy in ((.5,.5),(.78,.75)):
+                            geometry=page.evaluate("""id=>{
+                                const world=document.querySelector('.scene-world').getBoundingClientRect(),spot=[...document.querySelectorAll('.scene-hotspot')].find(s=>s.dataset.hotspotId===id);
+                                return {world:world.toJSON(),region:spot.getBoundingClientRect().toJSON()};
+                            }""",hotspot['id'])
+                            w,b=geometry['world'],hotspot['bounds'];r=geometry['region']
+                            assert abs(r['width']-w['width']*b['width']/100)<2 and abs(r['height']-w['height']*b['height']/100)<2,'旧按钮尺寸限制截断物件区域'
+                            page.mouse.click(w['left']+w['width']*(b['x']+b['width']*fx)/100,w['top']+w['height']*(b['y']+b['height']*fy)/100)
+                            page.locator('.scene-insight').wait_for(state='visible')
+                            assert page.locator('.scene-insight h2').inner_text()==hotspot['label'],'点物件主体却打开了其他物件'
+                            page.keyboard.press('Escape')
                     toggle = page.locator(".scene-find-toggle")
                     if toggle.get_attribute("aria-expanded") == "false":
                         toggle.click()
@@ -65,7 +78,7 @@ def check(html, output, executable=None):
                     page.locator(".scene-insight").wait_for(state="visible")
                     page.wait_for_function("getComputedStyle(document.querySelector('.scene-insight')).opacity==='1'")
                     point = page.evaluate("""id=>{
-                        const spot=[...document.querySelectorAll('.scene-hotspot')].find(s=>s.dataset.hotspotId===id),r=spot.getBoundingClientRect();
+                        const spot=[...document.querySelectorAll('.scene-hotspot')].find(s=>s.dataset.hotspotId===id),r=(spot.querySelector('.hotspot-marker')||spot).getBoundingClientRect();
                         const world=document.querySelector('.scene-world').getBoundingClientRect(),h=JOURNAL_DATA.story.scene.hotspots.find(h=>h.id===id);
                         const box=document.querySelector('.scene-insight').getBoundingClientRect();
                         return {x:r.left+r.width/2,y:r.top+r.height/2,expectedX:world.left+world.width*h.x/100,

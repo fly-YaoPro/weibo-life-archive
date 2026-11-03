@@ -237,12 +237,15 @@ def mobile_gate_expression(uid, request_path):
 
 
 def mobile_original_url(pic):
-    """Only actual returned original URLs; never construct a guessed CDN path."""
-    for value in (pic.get('original_pic'), pic.get('largest'), pic.get('original')):
-        if isinstance(value, dict): value = value.get('url')
-        if isinstance(value, str) and urlsplit(value).scheme in {'https', 'http'}:
-            return value
-    return None
+    """m.weibo.cn serves the platform original under the large/ prefix, keyed by pid."""
+    pid = pic.get("pid")
+    base = (pic.get("large") or {}).get("url") or pic.get("url")
+    if not (isinstance(pid, str) and pid and isinstance(base, str)):
+        return None
+    parts = urlsplit(base)
+    if not parts.scheme or not parts.netloc:
+        return None
+    return parts.scheme + "://" + parts.netloc + "/large/" + pid + ".jpg"
 
 
 def mobile_payload(value, uid, request_path):

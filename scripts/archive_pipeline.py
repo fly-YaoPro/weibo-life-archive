@@ -20,9 +20,8 @@ def initialize(root, uid, profile_url, start, end, mode="selected", title="人�
     meta = {"schema_version": 1, "platform": "weibo", "title": title, "mode": mode,
             "timezone": "Asia/Shanghai", "target": {"uid": identifier(uid), "profile_url": profile_url},
             "requested_range": {"start": start, "end": end}, "skin": skin,
-            "selection_policy": {"monthly_limit": 5, "yearly_limit": 30},
-            "collection": {"include_video_covers": False},
-            "presentation": {"archive_view": "calendar", "experience_required": False, "cover_required": False, "profile_required": False, "grounding_required": True, "three_wishes_required": False, "share_letter_required": False, "share_entries_required": True}}
+            "selection_policy": {"monthly_limit": 2, "yearly_limit": 24},
+            "presentation": {"bgm_enabled": True, "archive_view": "calendar", "experience_required": True, "cover_required": True, "profile_required": True, "grounding_required": True, "three_wishes_required": True, "share_letter_required": True, "share_entries_required": True}}
     save(root / "project_meta.json", meta)
     save(root / "progress.json", {"schema_version": 1, "target_uid": uid, "stage": "initialized"})
     return {"stage": "initialized", "requested_range": meta["requested_range"]}
@@ -97,7 +96,8 @@ def normalize(row, uid):
         for pic in row.get("pics") or []:
             source = (pic.get("large") or {}).get("url") or pic.get("url")
             if source and not any(im.get("source_url") == source for im in images):
-                images.append({"origin": "platform", "source_url": source,
+                images.append({"origin": "platform", "pid": pic.get("pid"),
+                               "source_url": source,
                                "thumb_url": pic.get("url") or source, "large_url": source,
                                "original_url": pic.get("original_pic"),
                                "thumb_path": None, "large_path": None, "download_status": "unavailable"})
@@ -142,7 +142,7 @@ def normalize(row, uid):
             "raw_created_at": row["created_at"], "text": text, "links": links,
             "url": url, "is_original": True, "is_video": is_video, "selected": False, "images": images,
             "text_status": text_status,
-            "expected_image_count": expected, 'image_count_basis': basis, 'image_inventory_status': inventory}
+            "expected_image_count": expected, "image_count_basis": basis, "image_inventory_status": inventory}
     if video is not None: record["video"] = video
     return record, None
 
@@ -165,9 +165,6 @@ def ingest(root, payload, scan_month=None, scan_status=None, note=""):
         if reason:
             counts[reason] += 1
             continue
-        if record.get('is_video') and not meta.get('collection', {}).get('include_video_covers', False):
-            counts['video_excluded'] += 1
-            continue
         day = date_key(record["created_at"])
         if not window["start"] <= day <= window["end"]:
             counts["out_of_range"] += 1
@@ -185,11 +182,12 @@ def ingest(root, payload, scan_month=None, scan_status=None, note=""):
                 record["is_video"] = True
                 record["video"]["covers"] = merge_media(record["video"]["covers"], old["video"].get("covers", []))
                 record["video"]["cover_status"] = "observed" if record["video"]["covers"] else "unavailable"
-            known_counts=[value for value in (record['expected_image_count'],old.get('expected_image_count')) if type(value) is int]
-            record['expected_image_count']=max(known_counts) if known_counts else None
-            if not record.get('image_count_basis') and old.get('image_inventory_status')=='complete':
-                record['image_count_basis']=old.get('image_count_basis','')
-                record['image_inventory_status']='complete' if len(record['images'])==record['expected_image_count'] else 'partial'
+            known = [v for v in (record['expected_image_count'], old.get('expected_image_count')) if type(v) is int]
+            record['expected_image_count'] = max(known) if known else None
+            if not record.get('image_count_basis') and old.get('image_inventory_status') == 'complete':
+                record['image_count_basis'] = old.get('image_count_basis', '')
+            record['image_inventory_status'] = ('complete' if record.get('image_count_basis') and
+                record['expected_image_count'] == len(record['images']) else 'partial' if known else 'unknown')
             for field in ("screenshot", "selection_reason", "selected"):
                 if field in old:
                     record[field] = old[field]
@@ -215,15 +213,24 @@ def select(root, ratings):
     root = Path(root)
     meta, rows = load(root / "project_meta.json"), load(root / "candidates.json", [])
     by_id = {r["id"]: r for r in rows}
-    policy = meta.get("selection_policy", {"monthly_limit": 5, "yearly_limit": 30})
+    policy = meta.get("selection_policy", {"monthly_limit": 2, "yearly_limit": 24})
     for key in ("monthly_limit", "yearly_limit"):
         if type(policy.get(key)) is not int or policy[key] < 1:
             raise ValueError("精选配额必须为正整数")
+    if isinstance(ratings, dict):
+        if any(not isinstance(v, dict) or ('id' in v and v['id'] != k) for k, v in ratings.items()):
+            raise ValueError('ratings: ID映射值需为评分对象且不得与键冲突')
+        ratings = [{**v, 'id': k} for k, v in ratings.items()]
+    if not isinstance(ratings, list) or any(not isinstance(v, dict) for v in ratings):
+        raise ValueError('ratings: 需要评分对象数组或 {真实ID: {score, reason}}')
+    unknown = [v.get('id') for v in ratings if isinstance(v.get('id'), str) and v['id'] not in by_id]
+    if unknown:
+        raise ValueError('ratings: 以下ID不在当前 candidates.json 中: ' + repr(unknown) + '; 重新生成当前项目的候选索引，不按日期猜ID')
     ranked, seen = [], set()
     for rating in ratings:
         rid = identifier(rating.get("id"))
         score = rating.get("score")
-        if rid not in by_id or rid in seen or type(score) not in (int, float) or not math.isfinite(score) or not rating.get("reason", "").strip():
+        if rid not in by_id or rid in seen or type(score) not in (int, float) or not math.isfinite(score) or (not isinstance(rating.get("reason"), str) or not rating["reason"].strip()):
             raise ValueError("评分需唯一真实ID、有限分值和人工阅读后的入选依据")
         seen.add(rid)
         ranked.append(rating)
@@ -308,9 +315,10 @@ def materialize(root):
         prior = old.get(row["id"], {})
         # Keep downloaded files for matching images, but do not discard newly fetched extra photos.
         record["images"] = merge_media(record["images"], prior.get("images", []))
-        if not record.get("image_count_basis") and prior.get("image_count_basis") and prior.get("image_inventory_status") == "complete":
-            record.update(expected_image_count=prior["expected_image_count"], image_count_basis=prior["image_count_basis"],
-                          image_inventory_status="complete" if len(record["images"]) == prior["expected_image_count"] else "partial")
+        if not record.get('image_count_basis') and prior.get('image_count_basis') and prior.get('image_inventory_status') == 'complete':
+            record.update(expected_image_count=prior['expected_image_count'], image_count_basis=prior['image_count_basis'])
+        record['image_inventory_status'] = ('complete' if record.get('image_count_basis') and
+            record.get('expected_image_count') == len(record['images']) else 'partial' if record.get('expected_image_count') is not None else 'unknown')
         if record.get("video"):
             record["video"] = {**record["video"], "covers": merge_media(record["video"]["covers"], (prior.get("video") or {}).get("covers", []))}
         if prior.get("screenshot"):
@@ -332,9 +340,9 @@ def materialize(root):
     save(root / "records.json", records)
     save(root / "coverage.json", annual)
     save(root / "metrics.json", report)
-    pending = sum(r.get("text_status") != "complete" or r.get('image_inventory_status') != 'complete' or len(r["images"]) < (r.get("expected_image_count") or 0)
+    pending = sum(r.get("text_status") != "complete" or r.get("image_inventory_status") != "complete" or len(r["images"]) < (r.get("expected_image_count") or 0)
                   or (r.get("is_video") and not (r.get("video") or {}).get("covers")) for r in records)
-    pending_photos = sum(len(r["images"]) < (r.get("expected_image_count") or 0) for r in records)
+    pending_photos = sum(r.get("image_inventory_status") != "complete" or len(r["images"]) != r.get("expected_image_count") for r in records)
     pending_video_covers = sum(bool(r.get("is_video")) and not (r.get("video") or {}).get("covers") for r in records)
     save(root / "progress.json", {"schema_version": 1, "target_uid": meta["target"]["uid"],
                                  "stage": "materialized", "saved_count": len(records), "pending_details": pending,

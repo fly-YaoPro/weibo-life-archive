@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Offline Weibo image-inventory gate. No network, credentials or model dependency."""
+"""Offline image inventory: all retained photos, one valid local size per photo."""
 import argparse
+import base64
+from archive_common import project_file
 import hashlib
 import json
 import re
@@ -107,8 +109,8 @@ def image_info(path):
             "sha256": hashlib.sha256(data).hexdigest()}
 
 
-def audit(root, meta=None, records=None):
-    root = Path(root).resolve()
+def audit(root=None, meta=None, records=None, assets=None):
+    root = Path(root or '/__embedded_journal__').resolve()
     errors, warnings, details, cache = [], [], [], {}
     try:
         meta = load(root / "project_meta.json") if meta is None else meta
@@ -117,6 +119,15 @@ def audit(root, meta=None, records=None):
             raise ValueError("expected Weibo metadata and record array")
     except (OSError, ValueError, TypeError) as exc:
         return {"ok": False, "errors": [str(exc)], "warnings": [], "records": []}
+    observed_counts = {}
+    candidates_path = root / 'candidates.json'
+    if assets is None and candidates_path.is_file():
+        try:
+            for row in load(candidates_path):
+                if isinstance(row, dict) and type(row.get('expected_image_count')) is int:
+                    observed_counts[str(row.get('id'))] = row['expected_image_count']
+        except (OSError, ValueError, TypeError) as exc:
+            errors.append('candidate inventory cannot be read: ' + str(exc))
     expected_total = saved_total = text_only = unknown = 0
     for index, record in enumerate(records):
         if not isinstance(record, dict):
@@ -132,6 +143,9 @@ def audit(root, meta=None, records=None):
         else:
             expected_total += expected
             text_only += expected == 0
+        observed = observed_counts.get(label)
+        if expected is not None and observed is not None and expected < observed:
+            errors.append(f'{label}: retained count {expected} is below observed source count {observed}; supplement detail instead of lowering the denominator')
         if record.get("image_inventory_status") != "complete":
             errors.append(label + ": image inventory not confirmed complete")
         if not isinstance(record.get("image_count_basis"), str) or not record["image_count_basis"].strip():
@@ -171,32 +185,25 @@ def audit(root, meta=None, records=None):
             if image.get("download_status") != "saved":
                 errors.append(item + ": image download is not complete")
             variants = {}
-            for key in ("thumb_path", "large_path"):
-                name = image.get(key)
-                try:
-                    if not isinstance(name, str) or not name or "\\" in name or re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", name):
-                        raise ValueError("expected project-relative local path")
-                    path = (root / name).resolve()
-                    if not path.is_relative_to(root) or not path.is_file():
-                        raise ValueError("file missing or path escapes project")
-                    if path not in cache:
-                        cache[path] = image_info(path)
-                    variants[key] = {"path": name, **cache[path]}
-                except (OSError, ValueError, OverflowError) as exc:
-                    errors.append(item + "." + key + ": " + str(exc))
-            if len(variants) == 2:
-                hashes = tuple(variants[k]["sha256"] for k in ("thumb_path", "large_path"))
-                if hashes in slots:
-                    errors.append(item + ": repeated files cannot fill another image slot")
-                slots.add(hashes)
-                if hashes[0] == hashes[1] and not str(image.get("large_note") or "").strip():
-                    errors.append(item + ": identical thumbnail/large bytes need verified best-available explanation in large_note")
-                large = variants["large_path"]
-                thumb = variants["thumb_path"]
-                if max(large["width"], large["height"]) < max(thumb["width"], thumb["height"]):
-                    errors.append(item + ": large image is smaller than thumbnail")
-                if max(large["width"], large["height"]) < 600:
-                    warnings.append(item + ": low resolution; verify best available source, do not upscale to simulate detail")
+            name = (image.get('original_path') or image.get('original') or
+                    image.get('large_path') or image.get('large') or
+                    image.get('thumb_path') or image.get('path'))
+            try:
+                path = project_file(root, name, {'.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif'}, exists=assets is None)
+                if path not in cache:
+                    if assets is None:
+                        info = image_info(path)
+                    else:
+                        value = assets.get(name, '')
+                        if not re.fullmatch(r'data:image/[^;,]+;base64,[A-Za-z0-9+/=\r\n]+', value):
+                            raise ValueError('missing embedded image')
+                        info = image_info(base64.b64decode(value.split(',', 1)[1], validate=True))
+                    cache[path] = info
+                variants['best'] = {'path': name, **cache[path]}
+                if max(cache[path]['width'], cache[path]['height']) < 600:
+                    warnings.append(item + ': low resolution; inspect actual source without upscaling')
+            except (OSError, ValueError, TypeError, OverflowError) as exc:
+                errors.append(item + ': ' + str(exc))
             if len(errors) == item_start:
                 saved += 1
             files.append({"image_id": identity, "files": variants})

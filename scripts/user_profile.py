@@ -52,6 +52,70 @@ def profile_expression(uid, selectors):
     })()""" % (json.dumps(selectors), json.dumps(uid))
 
 
+def profile_auto_expression(uid):
+    """Self-locating, bounded probe: anchor on the unique target header, no hard-coded hash classes."""
+    uid = identifier(uid)
+    return """(()=>{
+      const uid=%s, LABELS=['粉丝','关注','转评赞'];
+      if(!['https://weibo.com','https://www.weibo.com'].includes(location.origin))return JSON.stringify({success:false,reason:'desktop_required'});
+      if(!['/u/'+uid,'/'+uid].includes(location.pathname.replace(/\\/$/,'')))return JSON.stringify({success:false,reason:'wrong_target'});
+      const hasAvatar=e=>[...e.querySelectorAll('img')].some(i=>/sinaimg\\.cn/.test(i.src||'')&&/avatar|crop\\./.test(i.src||''));
+      const hasAll=e=>LABELS.every(l=>(e.innerText||'').includes(l));
+      const loginWall=[...document.querySelectorAll('div,form')].find(e=>/扫码登录|手机登录|请输入|登录注册/.test(e.innerText||'')&&e.querySelector('input'));
+      const all=[...document.querySelectorAll('div,section,header')];
+      const heads=all.filter(e=>hasAvatar(e)&&hasAll(e));
+      const minimal=heads.filter(h=>!heads.some(o=>o!==h&&h.contains(o)));
+      if(minimal.length===0)return JSON.stringify({success:false,reason:loginWall?'login_required':'profile_fields_missing'});
+      if(minimal.length>1)return JSON.stringify({success:false,reason:'profile_not_unique',count:minimal.length});
+      const h=minimal[0], full=(h.innerText||'').replace(/\\s+/g,' ').trim();
+      const grab=re=>{const m=full.match(re);return m?m[1]:null;};
+      const followers=grab(/([\\d][\\d,]*(?:\\.\\d+)?万?)\\s*粉丝/);
+      const following=grab(/([\\d][\\d,]*(?:\\.\\d+)?)\\s*关注/);
+      const engagement=grab(/([\\d][\\d,]*(?:\\.\\d+)?亿?)\\s*转评赞/);
+      const av=[...h.querySelectorAll('img')].find(i=>/sinaimg\\.cn/.test(i.src||''));
+      const anchor=[...h.querySelectorAll('a[href]')].map(a=>a.getAttribute('href')).find(href=>new RegExp(uid).test(href||''));
+      const leaves=[...h.querySelectorAll('h1,h2,h3,span,div')].filter(e=>e.children.length===0);
+      const nameEl=leaves.find(e=>{const t=(e.innerText||'').trim();return t&&!/\\d/.test(t)&&!LABELS.includes(t)&&full.startsWith(t);});
+      return JSON.stringify({success:true,uid,source_url:location.href,
+        basis:{target_anchor:anchor||null,header_unique:true,stat_format:'value+label'},
+        name:nameEl?nameEl.innerText.trim():null,avatar_source_url:av?(av.currentSrc||av.src):null,
+        followers,following,engagement});
+    })()""" % json.dumps(uid)
+
+
+def capture_profile_auto(bu, root):
+    """One bounded read of the target's name, avatar and 3 stats; missing fields stay null."""
+    root = Path(root)
+    meta = load(root / "project_meta.json")
+    uid = meta["target"]["uid"]
+    value = bu.js(profile_auto_expression(uid))
+    value = json.loads(value) if isinstance(value, str) else value
+    if not isinstance(value, dict) or not value.get("success"):
+        return {"status": value.get("reason", "invalid_snapshot") if isinstance(value, dict) else "invalid_snapshot",
+                "count": value.get("count") if isinstance(value, dict) else None}
+    if value.get("uid") != uid or not desktop_url(value.get("source_url", ""), uid):
+        raise ValueError("主页资料与采集目标不符")
+    if not value.get("name") or not value.get("avatar_source_url"):
+        return {"status": "profile_fields_missing"}
+    from manage_media import validate_url
+    validate_url(value["avatar_source_url"])
+    old = meta.get("profile", {})
+    profile = {"uid": uid, "name": value["name"], "source_url": value["source_url"],
+               "captured_at": datetime.now(BEIJING).isoformat(), "avatar_origin": "platform",
+               "selector_basis": value.get("basis"),
+               "avatar_source_url": value["avatar_source_url"],
+               **{key: count_value(value.get(key)) for key in ("followers", "following", "engagement")}}
+    if old.get("uid") == uid and old.get("avatar_source_url") == profile["avatar_source_url"]:
+        profile["avatar_path"] = old.get("avatar_path")
+    meta["profile"] = profile
+    if meta.get("title") == "人生手账":
+        meta["title"] = profile["name"] + "的微博人生手账"
+    save(root / "project_meta.json", meta)
+    return {"status": "captured", "uid": uid, "selector_basis": profile["selector_basis"],
+            "missing_counts": [k for k in ("followers", "following", "engagement") if not profile[k]["observed"]],
+            "avatar_saved": bool(profile.get("avatar_path"))}
+
+
 def capture_profile(bu, root, selectors):
     root = Path(root)
     meta = load(root / "project_meta.json")

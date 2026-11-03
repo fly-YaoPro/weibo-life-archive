@@ -35,11 +35,6 @@ class PipelineTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name) / "source"
         initialize(self.root, "synthetic", "https://weibo.com/u/synthetic", "2025-01-01", "2025-12-31")
-        # Explicit alternate quota and optional video mode for these legacy scenarios.
-        meta = load(self.root / "project_meta.json")
-        meta["selection_policy"].update(monthly_limit=2, yearly_limit=24)
-        meta["collection"]["include_video_covers"] = True
-        save(self.root / "project_meta.json", meta)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -225,7 +220,7 @@ class MediaTests(unittest.TestCase):
             # 图片经过自动压缩，验证恢复后的文件是有效 JPEG 而非原始字节
             recovered = (root / im["thumb_path"]).read_bytes()
             recovered_ext, rw, rh = image_info(recovered)
-            self.assertEqual(recovered_ext, "png")
+            self.assertEqual(recovered_ext, "jpg")
             self.assertEqual((rw, rh), (48, 48))
 
     def test_blocked_host_does_not_make_request(self):
@@ -290,11 +285,10 @@ class ExperienceTests(unittest.TestCase):
         self.assertTrue((out / "favicon.svg").exists())
         self.assertEqual(load(out / "metrics.json")["basis"], "saved_records_only")
 
-    def test_letter_cannot_replace_editable_plans(self):
+    def test_letter_can_replace_unsupported_plans(self):
         self.story["plans"] = []
         save(self.root / "story.json", self.story)
-        with self.assertRaisesRegex(ValueError, "plans"):
-            prepare(self.root, "paper")
+        self.assertEqual(prepare(self.root, "paper")["story"]["plans"], [])
 
     def test_bad_hotspots_and_false_annual_year_blocked(self):
         for mutate in (lambda s: s["scene"]["hotspots"][0].update(x=101),

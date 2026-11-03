@@ -29,26 +29,28 @@ def check(html, output, executable=None):
             if page.locator('#welcome-silent').is_visible(): page.locator('#welcome-silent').click()
             page.evaluate("JournalUI.go({view:'review',theme_id:'overview'})")
             page.wait_for_function("document.querySelector('#spread').dataset.fit==='ready'")
-            profile = page.evaluate('JOURNAL_DATA.meta.profile||null')
+            profile = page.evaluate('JOURNAL_DATA.meta.profile')
             # Title animation uses spans, whose standalone spaces disappear from
             # inner_text although the DOM retains the exact account name.
-            if profile:
-                displayed_name=page.locator('.user-profile .profile-name').text_content()
-                assert identity_matches(displayed_name, profile['name'])
-                for key in ['followers','following','engagement']:
-                    assert page.locator(f'.user-profile [data-metric="{key}"] dd').inner_text() == profile[key]['display']
+            displayed_name=page.locator('.user-profile .profile-name').text_content()
+            assert identity_matches(displayed_name, profile['name'])
+            for key in ['followers','following','engagement']:
+                assert page.locator(f'.user-profile [data-metric="{key}"] dd').inner_text() == profile[key]['display']
             page.screenshot(path=str(output/f'{width}x{height}-profile-cover.png'))
-            page.evaluate("JournalUI.switchView('future')"); assert page.locator('.plan-card').count()>0
+            page.evaluate("JournalUI.switchView('future')"); wish_count=page.evaluate('JOURNAL_DATA.story.wishes.length'); assert page.locator('.wish-card').count()==wish_count
+            page.evaluate("JournalUI.switchView('scene')")
+            if page.locator('.scene-find-toggle').get_attribute('aria-expanded')=='false':page.locator('.scene-find-toggle').click()
+            label=page.evaluate('JOURNAL_DATA.story.scene.hotspots[0].label')
+            page.locator('.scene-directory').get_by_role('button',name=label,exact=True).click()
+            page.locator('.scene-insight .insight-photo').first.wait_for(state='visible')
+            assert page.locator('.scene-insight .insight-photo').count()>=1
+            page.wait_for_function("getComputedStyle(document.querySelector('.scene-insight')).opacity==='1'")
+            page.screenshot(path=str(output/f'{width}x{height}-object-photos.png'));page.keyboard.press('Escape')
             page.evaluate("JournalUI.switchView('future')");page.locator('#share-button').click()
-            page.get_by_label('包含微博原图',exact=True).check()
-            if profile:page.get_by_label('包含头像和主页资料',exact=True).check()
-            page.get_by_role('button',name='生成预览',exact=True).click()
             page.wait_for_function("document.querySelector('.share-preview-image')?.naturalWidth===1080 && !document.querySelector('.share-toolbar .primary').disabled")
             layout=page.evaluate('JournalShare.lastLayout')
-            kinds=[s['kind'] for s in layout['sections']]
-            assert 'review' in kinds and 'posts' in kinds and 'tomorrow' in kinds
-            assert ('profile' in kinds)==bool(profile)
-            assert ('scene' in kinds)==page.evaluate('!!JOURNAL_DATA.story.scene')
+            assert [s['kind'] for s in layout['sections']]==['profile','review','scene','posts','letter','tomorrow']
+            assert sum(s['kind']=='generated_scene' for s in layout['imageSources'])==1
             sources=page.evaluate('JOURNAL_DATA.records');records={r['id']:r for r in sources}
             for image in layout['imageSources']:
                 if image['kind'] in {'record','video_cover'}:
@@ -56,7 +58,7 @@ def check(html, output, executable=None):
                     media=r['images'] if image['kind']=='record' else r.get('video',{}).get('covers',[])
                     assert image['path'] in {im.get('original') or im.get('large') or im['path'] for im in media}
                     assert not image['path'].startswith('decorations/')
-            preview=page.locator('.share-preview');assert preview.evaluate("e=>e.scrollHeight>e.clientHeight || [...e.querySelectorAll('img')].every(i=>i.getBoundingClientRect().bottom<=e.getBoundingClientRect().bottom+2)")
+            preview=page.locator('.share-preview');assert preview.evaluate('e=>e.scrollHeight>e.clientHeight')
             page.screenshot(path=str(output/f'{width}x{height}-preview-top.png'))
             preview.evaluate('e=>e.scrollTop=e.scrollHeight');page.screenshot(path=str(output/f'{width}x{height}-preview-bottom.png'))
             page.get_by_role('button',name='放大预览',exact=True).click();assert preview.get_attribute('class').endswith('is-zoomed')
@@ -89,7 +91,7 @@ def check(html, output, executable=None):
             page.evaluate("Object.defineProperty(navigator,'clipboard',{configurable:true,value:{write:async()=>{throw new DOMException('denied','NotAllowedError')}}})")
             page.get_by_role('button',name='复制图片',exact=True).click();page.wait_for_function("document.querySelector('.share-status').textContent.includes('没有复制成功')")
             assert page.get_by_role('button',name='下载 PNG',exact=True).is_enabled() and page.locator('.share-preview-image').count()
-            checks.append({'viewport':[width,height],'profile_matches':bool(profile),'plans_seeded':True,'sections':kinds,
+            checks.append({'viewport':[width,height],'profile_matches':True,'wishes':wish_count,'object_photos':True,'sections':6,
                            'original_photo_pixel_differences':differences,'preview_scroll':True,'preview_download_identical':True,
                            'source_video_covers':sum(s['kind']=='video_cover' for s in layout['imageSources']),
                            'native_clipboard_write':native_copy,'clipboard_refusal_retains_download':True,'parts':len(images)})

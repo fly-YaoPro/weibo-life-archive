@@ -1,5 +1,7 @@
 """Logged-in desktop snapshots and observed same-origin timelines, with checkpoints."""
 import hashlib
+import os
+import tempfile
 from copy import deepcopy
 import json
 import math
@@ -12,11 +14,11 @@ from archive_pipeline import ingest
 from weibo_web import desktop_expression, full_time, history_gate_expression, permalink_mid, timeline_expression, timeline_payload, timeline_request, mobile_container_path, mobile_gate_expression, mobile_payload, mobile_url
 
 
-def configure_desktop(bu, root, selectors, minimum_interval=4):
+def configure_desktop(bu, root, selectors, minimum_interval=2):
     root = Path(root); uid = load(root / 'project_meta.json')['target']['uid']
     expression = desktop_expression(uid, selectors)
-    if not isinstance(minimum_interval, (int, float)) or minimum_interval < 4:
-        raise ValueError('桌面快照保守串行，间隔至少4秒；不是免风控保证')
+    if type(minimum_interval) not in (int, float) or not math.isfinite(minimum_interval) or minimum_interval < 0:
+        raise ValueError('采集间隔需为非负有限秒数')
     result = bu.js(expression); result = json.loads(result) if isinstance(result, str) else result
     if not isinstance(result, dict) or not result.get('success'):
         return {'status': result.get('reason', 'invalid_snapshot') if isinstance(result, dict) else 'invalid_snapshot'}
@@ -135,7 +137,7 @@ def page_expression(*args, **kwargs):
     raise ValueError('移动端API不再是采集入口；登录网页端后使用configure_desktop/collect_snapshot')
 
 
-def configure_history(bu, root, selectors, observed_request, minimum_interval=4):
+def configure_history(bu, root, selectors, observed_request, minimum_interval=2):
     """Register the sole supported feature=0 route after checking the normal target page.
 
     observed_request may be its observed request path, or this skill's trace-verified
@@ -145,8 +147,8 @@ def configure_history(bu, root, selectors, observed_request, minimum_interval=4)
     root = Path(root)
     meta = load(root / 'project_meta.json'); uid = meta['target']['uid']
     timeline_request(uid, observed_request)
-    if type(minimum_interval) not in (int, float) or not math.isfinite(minimum_interval) or minimum_interval < 4:
-        raise ValueError('历史时间线保守串行，间隔至少4秒')
+    if type(minimum_interval) not in (int, float) or not math.isfinite(minimum_interval) or minimum_interval < 0:
+        raise ValueError('采集间隔需为非负有限秒数')
     value = bu.js(history_gate_expression(uid, selectors))
     value = json.loads(value) if isinstance(value, str) else value
     from user_profile import desktop_url
@@ -605,13 +607,34 @@ def _mobile_config(root):
     return root, config, uid
 
 
-def configure_mobile(bu, root, minimum_interval=4):
+TRANSPORT_DOWNLOAD = 'download'
+TRANSPORT_SYNC_XHR = 'sync_xhr'
+MOBILE_TRANSPORTS = (TRANSPORT_DOWNLOAD, TRANSPORT_SYNC_XHR)
+# Reasons that prove the route needs a person (login/verification), not another blind retry.
+_MOBILE_AUTH_REASONS = frozenset({
+    'login_or_html_page', 'business_error_or_verification', 'invalid_or_truncated_json',
+})
+
+
+def set_mobile_transport(root, transport):
+    """Persist a verified transport switch; never silently change an unrelated target."""
+    if transport not in MOBILE_TRANSPORTS:
+        raise ValueError('transport 须为 download 或 sync_xhr')
+    root, config, uid = _mobile_config(root)
+    config['transport'] = transport
+    save(root / 'mobile-collection.json', config)
+    return {'transport': transport, 'uid': uid}
+
+
+def configure_mobile(bu, root, minimum_interval=2, transport=TRANSPORT_DOWNLOAD):
     """Verify the m.weibo.cn target page and initialize page-addressable collection."""
     root = Path(root)
     meta = load(root / 'project_meta.json')
     uid = meta['target']['uid']
-    if type(minimum_interval) not in (int, float) or minimum_interval < 4:
-        raise ValueError('移动站保守串行，间隔至少4秒；不是免风控保证')
+    if type(minimum_interval) not in (int, float) or not math.isfinite(minimum_interval) or minimum_interval < 0:
+        raise ValueError('采集间隔需为非负有限秒数')
+    if transport not in MOBILE_TRANSPORTS:
+        raise ValueError('transport 须为 download 或 sync_xhr')
     info = bu.page_info()
     if not mobile_url(info.get('url'), uid):
         return {'status': 'setup_required', 'note': '先在已登录浏览器打开 m.weibo.cn 目标主页 /u/UID'}
@@ -622,14 +645,16 @@ def configure_mobile(bu, root, minimum_interval=4):
             raise ValueError('已有移动采集状态不完整或属于其他目标；保留原状态，在新项目中初始化')
         return {'status': 'handoff' if prior_state.get('blocked') else 'configured',
                 'route': 'm_weibo_container', 'resumed': True, 'next_page': prior_state['next_page'],
-                'source_url': prior_config['source_url'], 'reason': prior_state.get('blocked')}
-    config = {'uid': uid, 'minimum_interval': minimum_interval,
+                'source_url': prior_config['source_url'], 'transport': prior_config.get('transport'),
+                'reason': prior_state.get('blocked')}
+    config = {'uid': uid, 'minimum_interval': minimum_interval, 'transport': transport,
               'verified_at': datetime.now(BEIJING).isoformat(), 'source_url': info['url']}
     state = {'uid': uid, 'next_page': 1, 'next_allowed_at': 0, 'failures': 0,
              'boundary': {'last_page': None, 'half_year_visible': None, 'notices': []}, 'pages': []}
     save(root / 'mobile-collection.json', config)
     save(root / 'mobile-state.json', state)
-    return {'status': 'configured', 'route': 'm_weibo_container', 'source_url': info['url']}
+    return {'status': 'configured', 'route': 'm_weibo_container',
+            'transport': transport, 'source_url': info['url']}
 
 
 def _mobile_wait(state, config, clock, sleep):
@@ -638,16 +663,111 @@ def _mobile_wait(state, config, clock, sleep):
         sleep(wait)
 
 
-def _mobile_request_page(bu, config, page):
-    """Fetch one container page via same-origin sync XHR; return (mblogs, notices, path)."""
+def _mobile_full_url(uid, page):
+    return 'https://m.weibo.cn' + mobile_container_path(uid, page)
+
+
+def _mobile_partition_authors(mblogs, uid):
+    """Filter mixed recommendations without ever treating them as the target's posts."""
+    retained, skipped = [], []
+    for mblog in mblogs:
+        if not isinstance(mblog, dict) or not isinstance(mblog.get('user'), dict):
+            raise ValueError('missing_author')
+        author = mblog['user'].get('idstr') or mblog['user'].get('id')
+        if author is None:
+            raise ValueError('missing_author')
+        if str(author) == str(uid):
+            retained.append(mblog)
+        else:
+            skipped.append({'id': str(mblog.get('idstr') or mblog.get('id') or ''),
+                            'author_uid': str(author), 'reason': 'foreign_author_card'})
+    if skipped and not retained:
+        raise ValueError('other_author')
+    return retained, skipped
+
+
+def _mobile_validate_direct(raw_bytes, uid):
+    """Validate a complete body; allow auditable mixed cards, reject wholly foreign pages."""
+    if not raw_bytes:
+        raise ValueError('empty_download')
+    prefix = raw_bytes[:600].lower()
+    if b'<html' in prefix or b'<!doctype' in prefix or b'<head' in prefix:
+        raise ValueError('login_or_html_page')
+    try:
+        obj = json.loads(raw_bytes.decode('utf-8'))
+    except (ValueError, UnicodeDecodeError):
+        raise ValueError('invalid_or_truncated_json')
+    if not isinstance(obj, dict) or obj.get('ok') != 1:
+        raise ValueError('business_error_or_verification')
+    data = obj.get('data')
+    if not isinstance(data, dict) or not isinstance(data.get('cards'), list):
+        raise ValueError('invalid_container')
+    mblogs, notices = [], []
+
+    def walk(cards):
+        for card in cards:
+            if card.get('card_type') == 58 and card.get('name'):
+                notices.append(card['name'])
+            if card.get('mblog'):
+                mblogs.append(card['mblog'])
+            walk(card.get('card_group') or [])
+
+    walk(data['cards'])
+    mblogs, _ = _mobile_partition_authors(mblogs, uid)
+    for mblog in mblogs:
+        if not mblog.get('id') and not mblog.get('idstr'):
+            raise ValueError('missing_id')
+        timestamp(mblog.get('created_at'))  # raises on missing/invalid date
+    return obj, mblogs, notices
+
+
+def _mobile_normalize_envelope(raw_text, config, uid, page):
+    """Reuse mobile_payload normalization (pics dict, original_pic, idstr) on a downloaded body."""
+    request_path = mobile_container_path(uid, page)
+    envelope = {'success': True, 'http_status': 200,
+                'source_url': config['source_url'], 'request_path': request_path, 'body': raw_text}
+    mblogs, notices, reason = mobile_payload(envelope, uid, request_path)
+    if reason:
+        raise ValueError(reason)
+    mblogs, _ = _mobile_partition_authors(mblogs, uid)
+    return mblogs, notices, request_path
+
+
+def _mobile_fetch(bu, config, page, download_timeout=30.0):
+    """Fetch one page through the configured transport; return a rich result with full provenance."""
     uid = config['uid']
+    transport = config.get('transport', TRANSPORT_SYNC_XHR)
+    if transport == TRANSPORT_DOWNLOAD:
+        receipt = bu.download(_mobile_full_url(uid, page),
+                              filename='m-weibo-%06d.json' % page, timeout=download_timeout)
+        raw_bytes = Path(receipt['path']).read_bytes()
+        sha = hashlib.sha256(raw_bytes).hexdigest()
+        obj, _, _ = _mobile_validate_direct(raw_bytes, uid)
+        from archive_pipeline import flatten
+        _, skipped = _mobile_partition_authors(flatten(obj), uid)
+        raw_text = raw_bytes.decode('utf-8')
+        mblogs, notices, request_path = _mobile_normalize_envelope(raw_text, config, uid, page)
+        meta = {'download_path': receipt['path'], 'bytes': receipt['bytes'],
+                'source': receipt.get('source'), 'sha256': sha,
+                'guid': receipt.get('guid'), 'transport': transport,
+                'skipped_foreign_cards': skipped}
+        return {'mblogs': mblogs, 'notices': notices, 'request_path': request_path,
+                'raw_text': raw_text, 'receipt': meta}
     request_path = mobile_container_path(uid, page)
     raw = bu.js(mobile_gate_expression(uid, request_path))
     value = json.loads(raw) if isinstance(raw, str) else raw
     mblogs, notices, reason = mobile_payload(value, uid, request_path)
     if reason:
         raise ValueError(reason)
-    return mblogs, notices, request_path
+    mblogs, _ = _mobile_partition_authors(mblogs, uid)
+    return {'mblogs': mblogs, 'notices': notices, 'request_path': request_path,
+            'raw_text': None, 'receipt': None}
+
+
+def _mobile_request_page(bu, config, page):
+    """Back-compat 3-tuple (mblogs, notices, path); probe and existing mocks rely on these positions."""
+    result = _mobile_fetch(bu, config, page)
+    return result['mblogs'], result['notices'], result['request_path']
 
 
 def probe_mobile_boundary(bu, root, high_page=2000, deadline_seconds=60, clock=time.time, sleep=time.sleep):
@@ -714,20 +834,58 @@ def probe_mobile_boundary(bu, root, high_page=2000, deadline_seconds=60, clock=t
             'half_year_visible': half_year, 'notices': state['boundary']['notices']}
 
 
+def _load_cached_page(cache_path, uid, source_url):
+    """Return normalized (mblogs, notices, raw_text) from a trusted complete cache, else None."""
+    if not cache_path.exists():
+        return None
+    try:
+        raw_bytes = cache_path.read_bytes()
+        _, _, notices = _mobile_validate_direct(raw_bytes, uid)
+    except ValueError:
+        return None  # truncated/login/other-author cache must be re-fetched, not trusted
+    raw_text = raw_bytes.decode('utf-8')
+    mblogs, notices, _ = _mobile_normalize_envelope(
+        raw_text, {'source_url': source_url}, uid, int(cache_path.stem))
+    return mblogs, notices, raw_text
+
+
+def _save_raw_page(path, raw_text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix='.' + path.name, dir=path.parent)
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(raw_text.encode('utf-8'))
+        os.replace(name, path)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
 def collect_mobile(bu, root, max_pages=5, deadline_seconds=60, clock=time.time, sleep=time.sleep):
-    """Bounded serial collection from next_page; page needs no cursor chain."""
-    root, config, _ = _mobile_config(root)
+    from project_lock import project_lock, ProjectBusy
+    try:
+        with project_lock(Path(root) / '.mobile-collection.lock'):
+            return _collect_mobile_locked(bu, root, max_pages, deadline_seconds, clock, sleep)
+    except ProjectBusy:
+        return {'status': 'busy', 'reason': 'collection_already_running',
+                'note': 'Wait for the active call; do not launch overlapping batches or edit the cursor.'}
+
+
+def _collect_mobile_locked(bu, root, max_pages=5, deadline_seconds=60, clock=time.time, sleep=time.sleep):
+    """Bounded serial collection from next_page; cache-hit pages skip the network entirely."""
+    root, config, uid = _mobile_config(root)
     state = load(root / 'mobile-state.json')
     if state.get('blocked'):
         return {'status': 'handoff', 'reason': state['blocked']}
-    if type(max_pages) is not int or not 1 <= max_pages <= 10:
-        raise ValueError('单批1至10页')
+    if type(max_pages) is not int or not 1 <= max_pages <= 50:
+        raise ValueError('单批1至50页')
     if type(deadline_seconds) not in (int, float) or not 0 < deadline_seconds <= 120:
         raise ValueError('每批时间预算1至120秒')
     last_page = (state.get('boundary') or {}).get('last_page')
     deadline = clock() + deadline_seconds
-    processed = added = 0
+    processed = added = cache_hits = 0
     reached_end = False
+    transport_log = load(root / 'mobile-transport.json', [])
 
     for _ in range(max_pages):
         page = state['next_page']
@@ -736,37 +894,85 @@ def collect_mobile(bu, root, max_pages=5, deadline_seconds=60, clock=time.time, 
             break
         if clock() >= deadline:
             break
-        _mobile_wait(state, config, clock, sleep)
-        try:
-            mblogs, notices, request_path = _mobile_request_page(bu, config, page)
-        except ValueError as exc:
-            state['failures'] = state.get('failures', 0) + 1
-            state['next_allowed_at'] = clock() + 45
-            if state['failures'] >= 2:
-                state['blocked'] = str(exc)
-            save(root / 'mobile-state.json', state)
-            return {'status': 'handoff' if state.get('blocked') else 'verify_once',
-                    'reason': str(exc), 'page': page}
-        state['next_allowed_at'] = clock() + config['minimum_interval']
-        state['failures'] = 0
         cache_path = root / ('mobile-pages/%06d.json' % page)
+        cached = _load_cached_page(cache_path, uid, config['source_url'])
+        receipt = None
+        if cached is not None:
+            mblogs, notices, raw_text = cached
+            cache_hits += 1
+        else:
+            wait = max(0, state.get('next_allowed_at', 0) - clock())
+            if clock() + wait >= deadline:
+                break
+            _mobile_wait(state, config, clock, sleep)
+            if clock() >= deadline:
+                break
+            try:
+                fetched = _mobile_fetch(bu, config, page, download_timeout=min(30, deadline-clock()))
+            except ValueError as exc:
+                reason = str(exc)
+                state['failures'] = state.get('failures', 0) + 1
+                state['next_allowed_at'] = clock() + 45
+                # Auth/verification evidence stops the route immediately; other errors get one recheck.
+                if reason in _MOBILE_AUTH_REASONS or state['failures'] >= 2:
+                    state['blocked'] = reason
+                save(root / 'mobile-state.json', state)
+                return {'status': 'handoff' if state.get('blocked') else 'verify_once',
+                        'reason': reason, 'page': page}
+            except Exception as exc:
+                # A single tool-level timeout/block (e.g. BU_DOWNLOAD_TIMEOUT) stops this route.
+                state['blocked'] = 'tool_timeout:' + type(exc).__name__
+                save(root / 'mobile-state.json', state)
+                return {'status': 'handoff', 'reason': state['blocked'], 'page': page}
+            mblogs, notices, request_path = (fetched['mblogs'], fetched['notices'],
+                                             fetched['request_path'])
+            raw_text, receipt = fetched['raw_text'], fetched['receipt']
+            state['next_allowed_at'] = clock() + config['minimum_interval']
+            state['failures'] = 0
+        if cached is None:
+            if raw_text is not None:
+                _save_raw_page(cache_path, raw_text)  # byte-preserving atomic raw cache
+            else:
+                save(cache_path, {'request_path': request_path, 'source_url': config['source_url'],
+                                  'observed_at': datetime.now(BEIJING).isoformat(),
+                                  'cards': [{'card_type': 9, 'mblog': m} for m in mblogs]})
         data = {'cards': [{'card_type': 9, 'mblog': m} for m in mblogs]}
-        save(cache_path, {'request_path': request_path, 'source_url': config['source_url'],
-                          'observed_at': datetime.now(BEIJING).isoformat(), **data})
         before = len(load(root / 'candidates.json', []))
         result = ingest(root, data)
         added += result['candidate_count'] - before
         days = [date_key(m['created_at']) for m in mblogs]
-        state['pages'].append({'page': page, 'cache_path': cache_path.relative_to(root).as_posix(),
-                               'observed_count': len(mblogs), 'notices': notices,
-                               'oldest': min(days) if days else None,
-                               'newest': max(days) if days else None})
+        ordinary_days = [date_key(m['created_at']) for m in mblogs
+                         if not (m.get('isTop') or m.get('is_top') or m.get('top') or m.get('is_pinned'))]
+        page_entry = {'page': page, 'cache_path': cache_path.relative_to(root).as_posix(),
+                      'observed_count': len(mblogs), 'notices': notices,
+                      'cache_hit': cached is not None,
+                      'oldest': min(days) if days else None,
+                      'newest': max(days) if days else None,
+                      'ordinary_oldest': min(ordinary_days) if ordinary_days else None,
+                      'ordinary_newest': max(ordinary_days) if ordinary_days else None}
+        if receipt:
+            page_entry.update({'bytes': receipt['bytes'], 'source': receipt['source'],
+                               'sha256': receipt['sha256']})
+        if raw_text is not None:
+            from archive_pipeline import flatten
+            _, skipped = _mobile_partition_authors(flatten(json.loads(raw_text)), uid)
+            page_entry['skipped_foreign_cards'] = skipped
+        state['pages'].append(page_entry)
+        transport_log.append({'page': page, 'transport': config.get('transport'),
+                              'cache_hit': cached is not None, 'receipt': receipt,
+                              'observed_at': datetime.now(BEIJING).isoformat(),
+                              'oldest': min(days) if days else None,
+                              'newest': max(days) if days else None})
         state['next_page'] = page + 1
         processed += 1
+        # A later tool interruption must not erase completed pages or their audit trail.
+        save(root / 'mobile-transport.json', transport_log)
+        save(root / 'mobile-state.json', state)
         if notices:
             reached_end = True
             break
 
+    save(root / 'mobile-transport.json', transport_log)
     save(root / 'mobile-state.json', state)
     if state.get('blocked'):
         status = 'handoff'
@@ -777,6 +983,10 @@ def collect_mobile(bu, root, max_pages=5, deadline_seconds=60, clock=time.time, 
     else:
         status = 'ready'
     return {'status': status, 'processed_pages': processed, 'added': added,
+            'cache_hits': cache_hits, 'transport': config.get('transport'),
             'candidate_count': len(load(root / 'candidates.json', [])),
             'next_page': state['next_page'], 'boundary': state.get('boundary'),
+            'oldest': min((p['oldest'] for p in state['pages'] if p.get('oldest')), default=None),
+            'newest': max((p['newest'] for p in state['pages'] if p.get('newest')), default=None),
+            'last_pages': state['pages'][-2:],
             'wait_seconds': max(0, round(state.get('next_allowed_at', 0) - clock(), 2))}

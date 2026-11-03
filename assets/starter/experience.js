@@ -36,7 +36,7 @@
     function positionInsight(){
       cancelAnimationFrame(positionFrame);positionFrame=requestAnimationFrame(()=>{
         if(!activeBox?.isConnected||!activeSpot?.isConnected)return;
-        const r=activeSpot.getBoundingClientRect(),width=Math.min(292,innerWidth-32),left=Math.max(16,Math.min(innerWidth-width-16,r.left+r.width/2-width/2));
+        const r=(activeSpot.querySelector('.hotspot-marker')||activeSpot).getBoundingClientRect(),width=Math.min(292,innerWidth-32),left=Math.max(16,Math.min(innerWidth-width-16,r.left+r.width/2-width/2));
         if(r.left<8||r.right>innerWidth-8){activeBox.hidden=true;return;}activeBox.hidden=false;
         Object.assign(activeBox.style,{width:width+'px',left:left+'px',maxHeight:Math.max(150,innerHeight-105)+'px',overflow:'auto'});
         const height=activeBox.getBoundingClientRect().height,below=r.bottom+18;
@@ -63,7 +63,14 @@
         box.querySelector('.insight-close').setAttribute('aria-label','合上这段小记');box.hidden=true;document.body.append(box);activeSpot=spot;activeBox=box;positionInsight();
       };
       const spot=button('',activate,'scene-hotspot');spot.dataset.hotspotId=h.id;spot.dataset.effect=h.effect||'sparkle';spot.style.left=h.x+'%';spot.style.top=h.y+'%';spot.style.setProperty('--spot',S.hotspots.indexOf(h));
-      spot.append(node('span','hotspot-dot','✧'),node('span','hotspot-label',h.label));
+      // One accessible button per object; the visible beacon is not the hit area.
+      const marker=node('span','hotspot-marker');marker.append(node('span','hotspot-dot','✧'),node('span','hotspot-label',h.label));spot.append(marker);
+      const b=h.bounds;
+      if(b&&['x','y','width','height'].every(k=>Number.isFinite(b[k]))&&b.width>0&&b.height>0&&b.x>=0&&b.y>=0&&b.x+b.width<=100&&b.y+b.height<=100&&h.x>=b.x&&h.x<=b.x+b.width&&h.y>=b.y&&h.y<=b.y+b.height){
+        spot.dataset.calibrated='true';
+        Object.assign(spot.style,{left:b.x+'%',top:b.y+'%',width:b.width+'%',height:b.height+'%'});
+        Object.assign(marker.style,{left:((h.x-b.x)/b.width*100)+'%',top:((h.y-b.y)/b.height*100)+'%'});
+      }else spot.dataset.calibrated='false'; // Legacy data remains usable; never invent bounds.
       const tip=node('span','hotspot-tip',h.description);tip.id='tip-'+h.id;spot.append(tip);spot.setAttribute('aria-describedby',tip.id);spot.setAttribute('aria-label',h.label);world.append(spot);
       list.append(button(h.label,()=>{findObject(spot);activate();}));
     });
@@ -115,8 +122,8 @@
   }
   enable('future');const L=D.story.letter,host=$('#letter-content'),paper=node('article','future-letter');
   if(L){paper.append(node('p','eyebrow','DEAR FUTURE YOU · 留给接下来的日子'),node('h1','',L.title));L.paragraphs.forEach(p=>paper.append(node('p','',p)));paper.append(node('p','letter-closing',L.closing),sources(L.source_ids));if(L.image_path){const keepsake=node('figure','letter-keepsake photo-frame');keepsake.dataset.fastener='tape';const mount=node('div','photo-mount');mount.append(image(L.image_path,L.image_alt||'熟悉的小东西与温柔的灯光','letter-image'));keepsake.append(mount);paper.append(keepsake,node('p','letter-afterword','把熟悉的小东西，留给明天'));};}
-  else{paper.append(node('p','eyebrow','接下来'),node('h1','','留给想继续的事'));}
-  if(D.story.song){const s=D.story.song,card=node('section','song');card.append(node('h2','',s.name+' · '+s.artist),node('p','',s.reason));if(/^https?:\/\//i.test(s.url||'')){const a=node('a','','听听这首歌');a.href=s.url;a.target='_blank';a.rel='noopener noreferrer';card.append(a);}paper.append(card);}if(L||D.story.song)host.append(paper);else host.hidden=true;
+  else{paper.append(node('p','eyebrow','给接下来的日子'),node('h1','','留一点期待'),node('p','',D.story.overview.text));}
+  host.append(paper);
   if(D.story.bgm){
     const B=D.story.bgm,controlHost=$('#music-control'),audio=document.createElement('audio');audio.src=window.JOURNAL_ASSETS?.[B.path]||B.path;audio.preload='metadata';audio.loop=true;audio.volume=.22;controlHost.hidden=false;
     const control=button('',()=>setMusic(audio.paused),'record-player-button');control.setAttribute('aria-label','打开音乐');control.setAttribute('aria-pressed','false');

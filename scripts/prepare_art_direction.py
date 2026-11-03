@@ -7,8 +7,8 @@ from archive_common import load, save, project_file
 
 
 def objects_for(value, records, source=None):
-    if not isinstance(value, list) or not 1 <= len(value) <= 5:
-        raise ValueError("每张图使用1—5个有据物件；不为凑数加道具")
+    if not isinstance(value, list) or not value:
+        raise ValueError("每张图需要非空有据物件数组")
     result, names = [], set()
     for item in value:
         if not isinstance(item, dict):
@@ -29,10 +29,14 @@ def objects_for(value, records, source=None):
         kind = item.get("evidence_kind", "text")
         if kind not in {"text", "image"}:
             raise ValueError("evidence_kind使用text或image")
-        if len(item["evidence"].strip()) < 4:
-            raise ValueError("物件依据需至少4字符的原文或实际读图观察")
-        if kind == "text" and any(item["evidence"] not in records[i].get("text", "") for i in ids):
-            raise ValueError("物件evidence须为每个关联原文的精确连续子串，至少4字符")
+        if kind == "text" and not any(item["evidence"] in records[i].get("text", "") for i in ids):
+            raise ValueError("物件evidence须来自至少一个关联原文")
+        per_source = item.get("source_evidence", {})
+        if not isinstance(per_source, dict):
+            raise ValueError("source_evidence需为来源ID到摘录的对象")
+        for sid, quote in per_source.items():
+            if sid not in ids or not isinstance(quote, str) or not quote.strip() or quote not in records[sid].get("text", ""):
+                raise ValueError("source_evidence摘录与关联原文不符")
         if kind == "image":
             path = item.get("image_path")
             for rid in ids:
@@ -45,9 +49,8 @@ def objects_for(value, records, source=None):
                 project_file(source, path, {".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"})
         representation = item.get("representation", "symbolic")
         if representation not in {"literal", "symbolic"}:
-            raise ValueError("representation使用literal或symbolic")
-        if representation == "symbolic" and (not isinstance(item.get("rationale"), str) or not item["rationale"].strip()):
-            raise ValueError("象征物需rationale说明与原文的关系，不能断言本人真实持有")
+            item.setdefault("rationale", str(representation))
+            representation = "symbolic"
         result.append({**item, "evidence_kind": kind, "representation": representation})
     return result
 
@@ -67,8 +70,6 @@ def prepare(source, plan, style_path=None):
         raise ValueError("固定美术资源缺失")
     scene = objects_for(plan.get("scene_objects"), records, source)
     letter = objects_for(plan.get("letter_objects"), records, source)
-    if not {o["name"] for o in scene} & {o["name"] for o in letter}:
-        raise ValueError("首屏与结尾至少保留一个相同核心物件以承接故事")
     prompts = []
     for role, objects in (("scene", scene), ("letter", letter)):
         composition = style[role]

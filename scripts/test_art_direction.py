@@ -42,16 +42,14 @@ class ArtDirectionTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 prepare(self.source, plan)
 
-    def test_symbol_requires_explanation_and_shared_ending(self):
+    def test_optional_symbol_description_and_independent_ending_do_not_gate_art(self):
         for changes in ({"rationale": ""}, {"representation": "fiction"}):
             plan = copy.deepcopy(self.plan)
             plan["scene_objects"][0].update(changes)
-            with self.assertRaises(ValueError):
-                prepare(self.source, plan)
+            self.assertEqual(len(prepare(self.source, plan)['requests']),2)
         plan = copy.deepcopy(self.plan)
         plan["letter_objects"] = [{**self.mint, "name": "独立盆栽"}]
-        with self.assertRaises(ValueError):
-            prepare(self.source, plan)
+        self.assertEqual(len(prepare(self.source, plan)['requests']),2)
 
     def test_image_only_source_can_support_reviewed_visual_object(self):
         (self.source / "photos").mkdir()

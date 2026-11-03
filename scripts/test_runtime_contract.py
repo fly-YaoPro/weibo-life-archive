@@ -28,7 +28,7 @@ class RuntimeContractTests(unittest.TestCase):
             **{k:{'display':'—','value':None,'exact':False} for k in ('followers','following','engagement')}}
         save(self.root/'project_meta.json',meta)
         records=load(self.root/'records.json');records[0].update(url='https://example.invalid/demo-post',author_uid='synthetic',selected=True,
-            expected_image_count=1,image_inventory_status='complete',image_count_basis='Synthetic fixture inventory has one photo', images=[{'image_id':'synthetic-photo','large_note':'Synthetic fixture intentionally uses the same small image for both views','origin':'synthetic_fixture','provided_reference':'explicit synthetic fixture','download_status':'saved','thumb_path':'images/photo.png','large_path':'images/photo.png'}],
+            expected_image_count=1,image_inventory_status='complete',image_count_basis='Explicit synthetic inventory: one photo', images=[{'image_id':'synthetic-photo','origin':'synthetic_fixture','provided_reference':'explicit synthetic fixture','download_status':'saved','thumb_path':'images/photo.png','large_path':'images/photo.png'}],
             is_video=True,video={'source_url':'https://example.invalid/demo-post','cover_status':'observed','covers':[
                 {'origin':'synthetic_fixture','provided_reference':'explicit synthetic fixture','download_status':'saved','thumb_path':'images/cover.png','large_path':'images/cover.png'}]})
         save(self.root/'records.json',records)

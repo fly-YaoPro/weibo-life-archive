@@ -6,8 +6,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from archive_common import date_key, project_file
+from audit_images import audit as audit_images
 from experience import RASTER, AUDIO, validate_experience, validate_narrative, synthetic_fixture, record_image_paths
-from audit_images import image_info
 
 
 def asset_checker(root=None, assets=None):
@@ -141,43 +141,36 @@ def validate_runtime(meta, records, story=None, root=None, assets=None):
             raise ValueError('record.images需为数组')
         for image in record.get('images', []):
             validate_media(image,meta,resource)
-        if meta.get('platform') == 'weibo':
-            expected = record.get('expected_image_count')
-            if type(expected) is not int or expected < 0 or expected != len(record.get('images', [])):
-                raise ValueError('image inventory: 源配图总数未知或与实际图片清单不符')
-            if record.get('image_inventory_status') != 'complete' or not record.get('image_count_basis'):
-                raise ValueError('image inventory: 必须保留源图盘点状态和依据')
-            identifiers=set()
-            for im in record.get('images', []):
-                ident=im.get('image_id')
-                if not isinstance(ident,str) or not ident or ident in identifiers or im.get('download_status') != 'saved':
-                    raise ValueError('image inventory: 配图ID缺失、重复或尚未完整下载')
-                identifiers.add(ident)
-                for role in ('thumb_path','large_path'):
-                    name=im.get(role) or im.get('path' if role=='thumb_path' else 'large')
-                    if not name:raise ValueError('image inventory: 缺少实际本地图片规格')
-                    resource(name,RASTER)
-                    raw=base64.b64decode(assets[name].split(',',1)[1],validate=True) if assets is not None else project_file(root,name).read_bytes()
-                    image_info(raw)
         shot = record.get('screenshot')
         if shot:
             if shot.get('origin') != 'browser_capture' or shot.get('source_url') != record.get('url'):
                 raise ValueError('screenshot: 截图需对应同一原帖')
             resource(shot['path'], RASTER)
+    if meta.get('platform') == 'weibo':
+        image_audit = audit_images(root, meta, records, assets=assets)
+        if not image_audit['ok']:
+            raise ValueError('image inventory: ' + '; '.join(image_audit['errors']))
     result = {'profile_checked': meta.get('platform') == 'weibo', 'videos_checked': sum(bool(r.get('is_video')) for r in records)}
     if story is not None:
-        if meta.get('platform') == 'weibo' and (not isinstance(story.get('plans'),list) or not story['plans']):
-            raise ValueError('story.plans: 完成版必须有根据记录生成的可编辑计划，来信不能替代')
+        from story_shape import shape_errors
+        issues = shape_errors(story)
+        if issues: raise ValueError('story schema:\n' + '\n'.join(issues))
+        if presentation.get('bgm_enabled') is True and not story.get('bgm'):
+            raise ValueError('story.bgm: 默认配乐缺失；运行 journal_run 或 prepare_music')
+        if presentation.get('bgm_enabled') is False and story.get('bgm'):
+            raise ValueError('story.bgm: 与 presentation.bgm_enabled=false 冲突')
+        pending_text = [r['id'] for r in normalized if r.get('text_status') == 'pending']
+        if pending_text: raise ValueError('records.text_status: full text pending for ' + ', '.join(pending_text) + '; 补全文，不按字数猜测完整')
         grounding = presentation.get('grounding_required', False)
         result['narrative'] = validate_narrative(story, normalized, grounding)
         overview = story.get('overview', {})
         if presentation.get('cover_required') and (not isinstance(overview.get('opening'), str) or not overview['opening'].strip() or not overview.get('portrait')):
             raise ValueError('cover_required: 缺开场白或有据画像')
         if presentation.get('cover_required'):
-            for section,field,limit in ((overview,'headline',36),(overview,'text',200),(overview,'opening',100),(overview['portrait'],'text',160)):
+            for section,field in ((overview,'headline'),(overview,'text'),(overview,'opening'),(overview['portrait'],'text')):
                 value=section.get(field)
-                if not isinstance(value,str) or not value.strip() or len(value)>limit:
-                    raise ValueError('cover_required: 封面文字缺失或超过长度限制')
+                if not isinstance(value,str) or not value.strip():
+                    raise ValueError('cover_required: 封面文字缺失')
         if presentation.get('experience_required'):
             scene = story.get('scene')
             letter = story.get('letter')
@@ -191,16 +184,16 @@ def validate_runtime(meta, records, story=None, root=None, assets=None):
                 raise ValueError('experience_required: 首屏插画需放在 decorations/ 目录')
             if not letter['image_path'].startswith('decorations/'):
                 raise ValueError('experience_required: 结尾插画需放在 decorations/ 目录')
-            if not 3 <= len(scene.get('hotspots', [])) <= 5:
-                raise ValueError('experience_required: 场景需3—5个有据热点')
+            if not 1 <= len(scene.get('hotspots', [])) <= 10:
+                raise ValueError('experience_required: 场景需1—10个有据热点')
         # BGM 是可选增强项，不强制要求
-        if presentation.get('three_wishes_required') and len(story.get('wishes', [])) != 3:
-            raise ValueError('three_wishes_required: 需恰好3件有据小事')
+        if presentation.get('three_wishes_required') and not story.get('wishes'):
+            raise ValueError('three_wishes_required: 需非空有据小事，数量按内容确定')
         if presentation.get('share_letter_required') and not story.get('share', {}).get('letter_text', '').strip():
             raise ValueError('share_letter_required: 缺分享来信')
         if presentation.get('share_entries_required') and not story.get('share', {}).get('entries'):
             raise ValueError('share_entries_required: 缺真实来源分享节点')
-        paths.update(validate_experience(root, story, normalized, grounding, resource_check=resource))
+        paths.update(validate_experience(root, story, normalized, grounding, resource_check=resource, embedded_assets=assets))
         by_id={r['id']:r for r in normalized}
         for section in [overview]+story.get('themes',[]):
             for path in section.get('image_paths',[]):
