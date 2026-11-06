@@ -1,4 +1,4 @@
 interface:
-  display_name: "微博人生手账"
-  short_description: "精选微博十年图文，生成带可点记忆小屋、回看、年历和未来来信的手账"
-  default_prompt: "使用 $weibo-life-archive，按我提供的微博主页和真实平台图片制作可离线回看的个人手账。"
+  display_name: "社媒人生手帐"
+  short_description: "先识别支持的平台，用真实图文制作含记忆小屋、回看、年历和未来来信的人生手帐"
+  default_prompt: "使用 $social-life-journal，先确认我提供的社交平台是否支持；支持时按指定主页与真实图文制作可离线回看的人生手帐，部署前征求确认。"

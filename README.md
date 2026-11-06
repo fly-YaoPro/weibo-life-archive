@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="assets/cover.svg" alt="微博人生手账 · Weibo Life Archive" width="100%">
+  <img src="assets/cover.svg" alt="社媒人生手帐 · Social Life Journal" width="100%">
 </p>
 
-<h1 align="center">微博人生手账</h1>
-<p align="center">从真实微博图文里，把熟悉的小事重新翻出来。</p>
-<p align="center"><strong>Agent Skill · v4.4.2</strong> · 十年精选 · 真实照片 · 本地手账</p>
+<h1 align="center">社媒人生手帐</h1>
+<p align="center">从真实图文里，把熟悉的小事重新翻出来。</p>
+<p align="center"><strong>Agent Skill · v4.4.3</strong> · 十年精选 · 真实照片 · 本地手账</p>
 <p align="center">
   <a href="#快速开始">快速开始</a> ·
   <a href="#视觉参考">视觉参考</a> ·
@@ -14,7 +14,19 @@
 
 > 完整流程：**采集或导入 → 补全图片 → 阅读与叙事 → 构建手账 → 核对首图点击 → 交付**。不要求先爬好数据，也不把示例账号当成你的账号。下方参考图是 AI 生成的虚构设计示意，不是真实账号或当前版本的运行截图。
 
-## 这次更新：首图物件真的能点
+## 本版更新：统一名称，明确平台边界
+
+对外名称为 **社媒人生手帐**，Skill 标识为 `social-life-journal`。仓库地址保留不变，不影响原有下载链接。
+
+| 目标平台 | 本版行为 |
+| --- | --- |
+| 微博 | 按原有完整流程采集、续跑或导入，再制作手账。 |
+| 其他社交平台 | 回复“该平台暂不支持”并结束，不尝试登录、抓取或制作；已有导出数据也不例外。 |
+| 来源未明 | 先看链接与上下文，仍无法确定时只询问一次平台。 |
+
+多平台识别不等于多平台功能已上线。本次只调整入口名称、简介和路由边界，采集、图片补全、页面框架、首图标定及发布确认流程均保留。
+
+## 保留的首图点击优化
 
 v4.4.2 基于客户版 v4.4.1 的轻量流程，修复“星标能点，物件本身却点不到”：
 
@@ -41,12 +53,14 @@ v4.4.2 基于客户版 v4.4.1 的轻量流程，修复“星标能点，物件�
 
 ## 快速开始
 
-1. 下载完整仓库，保留 `SKILL.md`、`scripts/`、`references/` 和 `assets/` 的相对位置。
+1. 下载完整仓库，保留 `SKILL.md`、`scripts/`、`references/` 和 `assets/` 的相对位置。客户端如按目录名识别 Skill，将解压后的目录命名为 `social-life-journal`。
 2. 交给支持本地 Skill 的 Agent，或放到客户端指定的 Skill 目录。Agent 需要文件读写、代码执行、浏览器与读图能力；插画生成及部署按宿主实际工具执行。
 3. 给目标主页和要求。登录账号只提供访问权限，不自动成为要整理的主页。
 
+旧安装名若为 `weibo-life-archive`，更新时先识别安装位置，再迁移为 `social-life-journal`，避免同时加载两份。只更新 Skill 与配套资源，保留用户记录、图片、生成产物及采集断点，不自动重采。
+
 ```text
-使用这个 Skill，把我提供的微博主页整理成近十年的精选人生手账。
+使用 $social-life-journal，把我提供的微博主页整理成近十年的精选人生手账。
 采用纸本风格，使用真实原文和平台照片。
 先看包内视觉参考；生成首图后，实际读图标定每件物件的点击区域，
 核对桌面和手机能点开正确小记。
@@ -112,7 +126,13 @@ python scripts/journal_run.py --source /工作区/source --output-root /工作�
 
 ## 版本与恢复
 
-默认分支 `main` 与页面顶部下载入口提供 v4.4.2。更新前的完整仓库已保存在：
+默认分支 `main` 与页面顶部下载入口提供 v4.4.3。本次更名前的 v4.4.2 已完整备份在：
+
+[本版固定版本：v4.4.3](https://github.com/fly-YaoPro/weibo-life-archive/tree/generic-routing-20261106)
+
+[旧版备份：v4.4.2](https://github.com/fly-YaoPro/weibo-life-archive/tree/backup-pre-generic-routing-20261106)
+
+更早的版本仍保留：
 
 [旧版备份：v4.3.0](https://github.com/fly-YaoPro/weibo-life-archive/tree/codex/backup-before-scene-hotspot-20261103)
 
@@ -128,6 +148,6 @@ python scripts/journal_run.py --source /工作区/source --output-root /工作�
 
 ---
 
-[作者：fly-YaoPro](https://github.com/fly-YaoPro) · [淘宝消费手账 Skill](https://github.com/fly-YaoPro/taobao-consumption-journal)
+[作者：fly-YaoPro](https://github.com/fly-YaoPro) · [电商消费手帐 Skill](https://github.com/fly-YaoPro/taobao-consumption-journal)
 
 本仓库未附加开源许可证；复用与再分发授权请先联系作者。使用平台内容仍需遵守相应权限与权利边界。
