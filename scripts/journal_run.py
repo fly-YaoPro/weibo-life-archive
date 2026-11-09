@@ -48,7 +48,8 @@ def run(source, output_root, skins=None, publish_max_mb=None, book_max_mb=24):
     if not enabled and story.get('bgm'):
         raise ValueError('bgm_enabled=false conflicts with story.bgm; explicitly remove bgm for a music-free delivery')
     music = timed('prepare_music', lambda:prepare_music(source)) if enabled else {'status':'disabled_by_user'}
-    preflight = timed('story_preflight', lambda:check_story_project(source))
+    kind = meta.get('platform', 'weibo')
+    preflight = timed('story_preflight', lambda:check_story_project(source, kind))
     if not preflight['ok']:
         return {'ok':False,'status':'preflight_failed','errors':preflight['errors'],'stages':stages,'artifacts':[]}
     folder = output_root / (datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8])
@@ -69,7 +70,7 @@ def run(source, output_root, skins=None, publish_max_mb=None, book_max_mb=24):
             from media_budget import apply_budget
             budget=timed('media_budget_'+skin,lambda:apply_budget(built,book_max_mb))
             packed = timed('pack_'+skin,lambda:pack(built,html))
-            validation = timed('packed_contract_'+skin,lambda:check(html,'weibo','final'))
+            validation = timed('packed_contract_'+skin,lambda:check(html,kind,'final'))
             if not validation['ok']: raise ValueError('; '.join(validation['errors']))
             artifacts.append({'skin':skin,'html':packed['html'],'bytes':packed['bytes'],
                 'sha256':hashlib.sha256(html.read_bytes()).hexdigest(),

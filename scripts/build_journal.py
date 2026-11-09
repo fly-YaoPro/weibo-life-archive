@@ -36,7 +36,7 @@ def day(value):
 
 
 def normalize(root, meta, kind):
-    source = load(root / ("records.json" if kind == "weibo" else "orders.json"))
+    source = load(root / ("records.json" if kind in {"weibo", "photos"} else "orders.json"))
     rows = []
     def saved_images(values):
         images = []
@@ -47,11 +47,11 @@ def normalize(root, meta, kind):
                 continue
             fixture_image = synthetic_fixture(meta) and im.get("origin") == "synthetic_fixture" and bool(im.get("provided_reference"))
             if path.startswith("decorations/") or (im.get("origin") not in {None, "platform", "user_provided"} and not fixture_image):
-                raise ValueError("微博配图/视频封面不能用生成或库存图替代")
+                raise ValueError("记录配图/视频封面不能用生成或库存图替代")
             local_file(root, path)
             large = im.get("original_path") or im.get("large_path") or path
             local_file(root, large)
-            images.append({"path": path, "large": large, "original": im.get("original_path") or large,
+            images.append({**(im if kind == "photos" else {}), "path": path, "large": large, "original": im.get("original_path") or large,
                            "caption": im.get("caption", ""), "origin": im.get("origin", "platform"),
                            "provided_reference": im.get("provided_reference"),
                            "source_url": im.get("source_url"), "download_status": im.get("download_status"), "image_id": im.get("image_id")})
@@ -72,6 +72,18 @@ def normalize(root, meta, kind):
                 validate_video(r, meta)
                 covers = video.get("covers")
                 rows[-1].update(is_video=True, video={**video, "covers": saved_images(covers), "observed_covers": covers})
+        elif kind == "photos":
+            from photo_contract import photo_date, photo_date_label
+            images = saved_images(r.get("images", []))
+            text = r.get("text", "")
+            rows.append({**r, "id": str(r["id"]), "date": photo_date(r), "date_label": photo_date_label(r),
+                         "date_precision": r.get("date_precision", "unknown"),
+                         "date_basis": r.get("date_basis", "unknown"), "created_at": r.get("created_at"),
+                         "title": r.get("title") or re.sub(r"\s+", " ", text)[:26] or "一张照片",
+                         "text": text, "images": images, "url": None,
+                         "expected_image_count": r.get("expected_image_count"),
+                         "image_inventory_status": r.get("image_inventory_status"),
+                         "image_count_basis": r.get("image_count_basis")})
         else:
             if not r.get("is_success"):
                 continue
@@ -91,7 +103,7 @@ def normalize(root, meta, kind):
         raise ValueError("来源ID重复，请先运行数据检查器")
     if not rows:
         raise ValueError("没有可用记录，不制作空手账")
-    return sorted(rows, key=lambda r: (r["date"], r["id"]))
+    return sorted(rows, key=lambda r: (r["date"] is None, r["date"] or "", r["id"]))
 
 
 def prepare(root, skin, story=None, pending_music=False):
@@ -102,8 +114,8 @@ def prepare(root, skin, story=None, pending_music=False):
     if pending_music and not story.get('bgm'):
         meta.setdefault('presentation', {}).pop('bgm_enabled', None)
     kind = meta["platform"]
-    if kind not in {"weibo", "taobao"} or (kind == "taobao" and skin != "collage") or (kind == "weibo" and skin == "collage"):
-        raise ValueError("微博使用 paper/frosted；淘宝使用 collage")
+    if kind not in {"weibo", "photos", "taobao"} or (kind == "taobao" and skin != "collage") or (kind in {"weibo", "photos"} and skin == "collage"):
+        raise ValueError("微博/照片使用 paper/frosted；淘宝使用 collage")
     if kind == 'weibo':
         from audit_images import audit
         image_audit = audit(root, meta)
@@ -171,7 +183,7 @@ def prepare(root, skin, story=None, pending_music=False):
     if meta.get("presentation", {}).get("share_letter_required") and (not isinstance(share.get("letter_text"), str) or not share["letter_text"].strip()):
         raise ValueError("先由Agent浓缩未来来信到share.letter_text，再生成分享图")
     if meta.get("presentation",{}).get("share_entries_required") and not share.get("entries"):
-        raise ValueError("先按真实微博逐条提炼分享节点share.entries，日期和照片必须属于同一source_id")
+        raise ValueError("先按真实记录逐条提炼分享节点share.entries，日期和照片必须属于同一source_id")
     for entry in share.get("entries", []):
         if entry.get("source_id") not in by_id or not entry.get("title") or not entry.get("text"):
             raise ValueError("分享节点需真实source_id、标题与提炼短记")
@@ -205,18 +217,27 @@ def prepare(root, skin, story=None, pending_music=False):
                 raise ValueError("页面图片与来源ID不对应: " + str(path))
             r, im = allowed[path]
             caption = section.get("image_captions", {}).get(path) or im["caption"] or r["title"]
-            section["images"].append({**im, "date": r["date"], "record_id": r["id"], "caption": caption})
-    if kind == 'weibo' and any(r['images'] for r in rows) and not any(s['images'] for s in [overview] + themes):
+            section["images"].append({**im, "date": r["date"], "date_label": r.get("date_label", r["date"]),
+                                      "record_id": r["id"], "caption": caption})
+    if kind in {'weibo', 'photos'} and any(r['images'] for r in rows) and not any(s['images'] for s in [overview] + themes):
         raise ValueError('回看页面全部无图：已有真实配图不能全部藏到年历里')
-    actual = {"start": rows[0]["date"], "end": rows[-1]["date"]}
+    dated = [row["date"] for row in rows if row["date"]]
+    actual = {"start": dated[0] if dated else None, "end": dated[-1] if dated else None}
     meta["actual_range"] = actual
     meta["plan_year"] = int(meta.get("plan_year") or datetime.now(BEIJING).year + 1)
     mode = "精选记录" if meta.get("mode") == "selected" else "已收录记录"
-    scope = f'{actual["start"]} — {actual["end"]} · {len(rows)}条{mode}'
+    if kind == "photos":
+        from photo_contract import photo_date_label
+        known = [row for row in rows if row["date"]]
+        date_range = (photo_date_label(known[0]) + " — " + photo_date_label(known[-1])) if known else "拍摄日期待确认"
+        unknown = len(rows) - len(known)
+        scope = f'{date_range} · {len(rows)}张照片' + (f' · {unknown}张日期待确认' if unknown else '')
+    else:
+        scope = f'{actual["start"]} — {actual["end"]} · {len(rows)}条{mode}'
     requested = meta.get("requested_range", {})
-    if requested.get("start", actual["start"]) < actual["start"]:
+    if kind != "photos" and requested.get("start", actual["start"]) < actual["start"]:
         scope += " · 更早范围未完整收录"
-    identity = str(meta.get("project_id") or meta.get("target", {}).get("uid") or rows[0]["id"])
+    identity = str(meta.get("project_id") or meta.get("target", {}).get("collection_id") or meta.get("target", {}).get("uid") or rows[0]["id"])
     project_key = hashlib.sha256((kind + ":" + identity).encode()).hexdigest()[:16]
     extra_paths = set(contract['paths'])
     # Video posters are separate evidence assets. Include them in the packed
@@ -238,6 +259,22 @@ def prepare(root, skin, story=None, pending_music=False):
             # Older imports do not contain a scan index: counts refer only to saved records.
             report = calculate_metrics(meta, load(root / "records.json"), [], load(root / "records.json"))
             report["basis"] = "saved_records_only"
+    elif kind == "photos":
+        days, months = {}, {}
+        for row in rows:
+            date = row["date"]
+            if date and row["date_precision"] == "day":
+                days[date] = days.get(date, 0) + 1
+            if date and row["date_precision"] in {"day", "month"}:
+                month = date[:7]
+                months[month] = months.get(month, 0) + 1
+        report = {"basis": "provided_photos", "complete": False, "saved_count": len(rows),
+                  "active_days": len(days), "days": days,
+                  "monthly": [{"month": month, "saved_count": count, "status": "selected", "published_count": None}
+                              for month, count in sorted(months.items())],
+                  "requested_range": meta.get("requested_range", {}),
+                  "date_precision_counts": {precision: sum(row["date_precision"] == precision for row in rows)
+                                            for precision in ("day", "month", "year", "unknown")}}
     return {"version": 3, "project_key": project_key, "skin": skin, "meta": meta, "story": story,
             "coverage": coverage, "records": rows, "scope": scope, "metrics": report, "narrative_validation": narrative,
             "extra_paths": sorted(extra_paths)}
@@ -266,11 +303,12 @@ def build(source, output, skin, template=None):
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(project_file(source, name), target)
     # Keep normalized raw data, but never copy browser state/cache/credentials from an old project.
-    for filename in ("project_meta.json", "coverage.json", "story.json", "records.json" if data["meta"]["platform"] == "weibo" else "orders.json"):
+    social = data["meta"]["platform"] in {"weibo", "photos"}
+    for filename in ("project_meta.json", "coverage.json", "story.json", "records.json" if social else "orders.json"):
         shutil.copyfile(source / filename, output / filename)
-    bundle = "data.js" if data["meta"]["platform"] == "weibo" else "orders.js"
-    global_name = "LIFE_ARCHIVE_DATA" if data["meta"]["platform"] == "weibo" else "CONSUMPTION_JOURNAL_DATA"
-    raw_key = "records" if data["meta"]["platform"] == "weibo" else "orders"
+    bundle = "data.js" if social else "orders.js"
+    global_name = "LIFE_ARCHIVE_DATA" if social else "CONSUMPTION_JOURNAL_DATA"
+    raw_key = "records" if social else "orders"
     canonical = {"meta": data["meta"], "coverage": data["coverage"], "story": data["story"], raw_key: load(source / (raw_key + ".json"))}
     canonical_js = f"window.{global_name} = " + json.dumps(canonical, ensure_ascii=False).replace("<", "\\u003c") + ";\n"
     (output / bundle).write_text(canonical_js, encoding="utf-8")

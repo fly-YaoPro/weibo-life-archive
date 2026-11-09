@@ -3,9 +3,9 @@
   'use strict';
   const D=window.JOURNAL_DATA,U=window.JournalUI,$=s=>document.querySelector(s);
   if(!D||!U)return;
-  const {node,button,image,photo,sources,openRecords,recordMedia}=U,byId=new Map(D.records.map(r=>[r.id,r]));
+  const {node,button,image,photo,sources,openRecords,recordMedia}=U,byId=new Map(D.records.map(r=>[r.id,r])),photoMode=D.meta.platform==='photos';
   function enable(view){const tab=$(`button[data-view="${view}"]`);if(tab)tab.hidden=false;}
-  function photos(ids,limit=3,seen=new Set()){const wrap=node('div','memory-photos');if(limit<=0)return wrap;for(const id of ids||[]){const r=byId.get(id);if(!r)continue;for(const im of r.images){if(seen.has(im.path))continue;seen.add(im.path);wrap.append(photo({...im,date:r.date,caption:im.caption||r.title},wrap.children.length));if(wrap.children.length>=limit)return wrap;}}return wrap;}
+  function photos(ids,limit=3,seen=new Set()){const wrap=node('div','memory-photos');if(limit<=0)return wrap;for(const id of ids||[]){const r=byId.get(id);if(!r)continue;for(const im of r.images){if(seen.has(im.path))continue;seen.add(im.path);wrap.append(photo({...im,date:r.date,date_label:r.date_label,caption:im.caption||r.title},wrap.children.length));if(wrap.children.length>=limit)return wrap;}}return wrap;}
   let setMusic=async()=>false,sceneReady=Promise.resolve(),welcomeShown=false;
   const welcome=$('#welcome'),welcomeKey='journal-welcome:'+D.project_key;
   try{welcomeShown=sessionStorage.getItem(welcomeKey)==='seen';}catch(e){}
@@ -56,7 +56,7 @@
         closeInsight();spot.classList.add('is-found');spot.querySelector('.hotspot-dot').textContent='✧';objectFeedback(h);
         const box=node('aside','scene-insight');box.setAttribute('role','region');box.setAttribute('aria-label',h.label);
         box.append(node('span','insight-pin'),button('×',()=>closeInsight(true),'insight-close'),node('p','insight-eyebrow','藏在小物里的日子'),node('h2','',h.label),node('p','insight-copy',h.description));
-        const linked=(h.image_paths?.length?h.image_paths:[]),assets=(h.source_ids||[]).flatMap(id=>{const r=byId.get(id);return (r?recordMedia(r):[]).map(im=>({...im,date:r.date,caption:im.caption||r.title,record_id:r.id}));});
+        const linked=(h.image_paths?.length?h.image_paths:[]),assets=(h.source_ids||[]).flatMap(id=>{const r=byId.get(id);return (r?recordMedia(r):[]).map(im=>({...im,date:r.date,date_label:r.date_label,caption:im.caption||r.title,record_id:r.id}));});
         const choices=linked.length?assets.filter(im=>linked.includes(im.path)||linked.includes(im.large)||linked.includes(im.original)):assets;
         if(choices.length){const gallery=node('div','insight-photos');choices.slice(0,2).forEach((asset,i)=>{const frame=photo({...asset,path:asset.original||asset.large||asset.path},i,'insight-photo');frame.dataset.recordId=asset.record_id;frame.querySelectorAll('img').forEach(im=>{im.loading='eager';im.addEventListener('load',positionInsight,{once:true});});gallery.append(frame);});box.append(gallery);}
         box.append(sources(h.source_ids),button('翻到这段记忆',()=>{closeInsight();if(h.target.view==='review')window.JournalMotion.enter(h.target);else U.go(h.target);},'primary'));
@@ -105,20 +105,20 @@
   }
   if(D.metrics){
     enable('stats');const M=D.metrics,host=$('#stats'),shownPhotos=new Set();host.append(node('p','eyebrow','年历 · 那些留下来的日子'),node('h1','','日子留下的形状'),node('p','lead',D.story.overview.text));
-    const totals=node('div','archive-totals');[['收进手账的片段',M.saved_count],['留在相册的照片',new Set(D.records.flatMap(r=>r.images.map(im=>im.path))).size],['留下记录的日子',M.active_days],['一起走过的年份',new Set(D.records.map(r=>r.date.slice(0,4))).size]].forEach(([label,value])=>{const cell=node('div');cell.append(node('strong','',String(value)),node('span','',label));totals.append(cell);});host.append(totals,photos(D.story.overview.source_ids,3,shownPhotos));
+    const totals=node('div','archive-totals');[['收进手账的片段',M.saved_count],['留在相册的照片',new Set(D.records.flatMap(r=>r.images.map(im=>im.path))).size],[photoMode?'已确定日期的日子':'留下记录的日子',M.active_days],[photoMode?'照片覆盖的已知年份':'一起走过的年份',new Set(D.records.filter(r=>r.date).map(r=>r.date.slice(0,4))).size]].forEach(([label,value])=>{const cell=node('div');cell.append(node('strong','',String(value)),node('span','',label));totals.append(cell);});host.append(totals,photos(D.story.overview.source_ids,3,shownPhotos));
     const tags=node('div','tags');(D.story.overview.tags||[]).forEach(t=>tags.append(node('span','',t)));host.append(tags);
     (D.story.findings||[]).forEach(f=>{const section=node('article','annual-review');section.append(node('h2','',f.title),node('p','',f.text),sources(f.source_ids));host.append(section);});
-    const chartPaper=node('article','chart-paper');chartPaper.append(node('p','eyebrow','每个月，留下一点声音'),node('h2','','记录的节奏'));
-    const monthly=new Map();for(const r of D.records){const month=r.date.slice(0,7);if(!monthly.has(month))monthly.set(month,[]);monthly.get(month).push(r);}
+    const chartPaper=node('article','chart-paper');chartPaper.append(node('p','eyebrow',photoMode?'从已提供的照片里，看看日子':'每个月，留下一点声音'),node('h2','',photoMode?'照片里的时间':'记录的节奏'));
+    const monthly=new Map();for(const r of D.records){if(!r.date||r.date.length<7)continue;const month=r.date.slice(0,7);if(!monthly.has(month))monthly.set(month,[]);monthly.get(month).push(r);}
     const keys=[...monthly.keys()].sort(),span=keys.length?((Number(keys.at(-1).slice(0,4))-Number(keys[0].slice(0,4)))*12+Number(keys.at(-1).slice(5))-Number(keys[0].slice(5))+1):0;
     const groups=new Map();for(const month of keys){const group=span>48&&keys.length>18?month.slice(0,4):month;if(!groups.has(group))groups.set(group,[]);groups.get(group).push(...monthly.get(month));}
     const chart=node('div','publication-chart'),maximum=Math.max(1,...[...groups.values()].map(rs=>rs.length));chart.setAttribute('role','group');chart.setAttribute('aria-label','按实际收录范围展开的记录节奏');chart.dataset.buckets=String(groups.size);
-    chartPaper.append(node('p','rhythm-range',keys.length?keys[0]+' — '+keys.at(-1)+(span>48&&keys.length>18?' · 按年读这些片段':' · 有记录的月份'):'这一页，等下一段记忆'));
+    chartPaper.append(node('p','rhythm-range',keys.length?keys[0]+' — '+keys.at(-1)+(span>48&&keys.length>18?' · 按年读这些片段':' · 有记录的月份'):photoMode?'日期暂不确定的照片保留在下方相册，不放进时间统计。':'这一页，等下一段记忆'));
     groups.forEach((rows,period)=>{const cell=button('',()=>openRecords(rows.map(r=>r.id),period+' · '+rows.length+'个片段'),'publication-month');cell.title=period+' · '+rows.length+'个片段';cell.setAttribute('aria-label',cell.title);cell.dataset.period=period;
       const bar=node('span','publication-bar');bar.style.height=Math.max(10,rows.length/maximum*100)+'%';const tip=node('span','rhythm-tip',cell.title),label=node('span','rhythm-label',period.length===4?period:period.slice(2).replace('-','.'));cell.append(bar,tip,label);chart.append(cell);});
     chartPaper.append(chart);host.append(chartPaper);
     const notes=node('details','year-stories'),summary=node('summary','','沿着这些日子，读几段小记');notes.append(summary);
-    (D.story.annual_reviews||D.story.themes.map(t=>({year:byId.get(t.source_ids[0]).date.slice(0,4),...t}))).forEach(y=>{const section=node('article','annual-review');section.append(node('p','eyebrow',String(y.year)),node('h2','',y.title),node('p','',y.text));if(y.award)section.append(node('p','award',y.award));const gallery=photos(y.source_ids,Math.min(2,8-shownPhotos.size),shownPhotos);if(gallery.children.length)section.append(gallery);section.append(sources(y.source_ids));notes.append(section);});host.append(notes);
+    (D.story.annual_reviews||D.story.themes.map(t=>({year:byId.get(t.source_ids[0])?.date?.slice(0,4)||'日期待确认',...t}))).forEach(y=>{const section=node('article','annual-review');section.append(node('p','eyebrow',String(y.year)),node('h2','',y.title),node('p','',y.text));if(y.award)section.append(node('p','award',y.award));const gallery=photos(y.source_ids,Math.min(2,8-shownPhotos.size),shownPhotos);if(gallery.children.length)section.append(gallery);section.append(sources(y.source_ids));notes.append(section);});host.append(notes);
   }
   enable('future');const L=D.story.letter,host=$('#letter-content'),paper=node('article','future-letter');
   if(L){paper.append(node('p','eyebrow','DEAR FUTURE YOU · 留给接下来的日子'),node('h1','',L.title));L.paragraphs.forEach(p=>paper.append(node('p','',p)));paper.append(node('p','letter-closing',L.closing),sources(L.source_ids));if(L.image_path){const keepsake=node('figure','letter-keepsake photo-frame');keepsake.dataset.fastener='tape';const mount=node('div','photo-mount');mount.append(image(L.image_path,L.image_alt||'熟悉的小东西与温柔的灯光','letter-image'));keepsake.append(mount);paper.append(keepsake,node('p','letter-afterword','把熟悉的小东西，留给明天'));};}

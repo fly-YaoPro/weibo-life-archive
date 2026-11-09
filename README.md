@@ -4,17 +4,28 @@
 
 <h1 align="center">社媒人生手帐</h1>
 <p align="center">从真实图文里，把熟悉的小事重新翻出来。</p>
-<p align="center"><strong>Agent Skill · v4.4.3</strong> · 十年精选 · 真实照片 · 本地手账</p>
+<p align="center"><strong>Agent Skill · v4.5.0-beta.1 测试版</strong> · 微博记录 · 照片回忆册</p>
 <p align="center">
   <a href="#快速开始">快速开始</a> ·
   <a href="#视觉参考">视觉参考</a> ·
   <a href="SKILL.md">查看 Skill</a> ·
-  <a href="https://github.com/fly-YaoPro/weibo-life-archive/archive/refs/heads/main.zip">下载最新版</a>
+  <a href="https://github.com/fly-YaoPro/weibo-life-archive/archive/refs/tags/v4.5.0-beta.1.zip">下载完整测试版</a>
 </p>
 
 > 完整流程：**采集或导入 → 补全图片 → 阅读与叙事 → 构建手账 → 核对首图点击 → 交付**。不要求先爬好数据，也不把示例账号当成你的账号。下方参考图是 AI 生成的虚构设计示意，不是真实账号或当前版本的运行截图。
 
-## 本版更新：统一名称，明确平台边界
+## 本版新增：照片回忆册（测试）
+
+本分支新增照片玩法，保留原微博流程。照片可按参考图、主题/事件、相册或时间范围选材，不默认十年；网盘优先使用宿主可用的 MCP/连接器，取得可用图片后接本地导入。结合拍摄元数据与批量读图归成事件，生成回看、日历、未来寄语及分享长图。允许有据推断，关键身份与经历由用户确认，分析底稿和精确位置不默认公开。
+
+- 只知道年份、月份或日期未知的照片按原精度展示，不拿上传时间或文件修改时间补造拍摄日期。
+- 原图不动；交付副本去除 EXIF，并验证图片实际字节、尺寸与指纹。扫描不到的目录如实报错。
+- 百度网盘 MCP 取图规则已写入，实际连接器的检索、预览、原图及 EXIF 能力仍需在目标宿主联调；没有这些能力时可补本地原图。
+- 本轮已用合成素材验证导入、日期精度、图片完整性与去 EXIF、构建打包；真实相册叙事及百度网盘 MCP 仍待目标电脑联调。发布 Skill 不等于公开用户相册，产物部署仍需确认。
+
+执行步骤见[照片回忆册](references/photo-memory.md)和[选材与网盘取图](references/photo-sourcing.md)。微博原流程保留；照片分支不套微博 UID、每月/每年选材上限或十年窗口。
+
+## 微博与平台边界
 
 对外名称为 **社媒人生手帐**，Skill 标识为 `social-life-journal`。仓库地址保留不变，不影响原有下载链接。
 
@@ -24,7 +35,7 @@
 | 其他社交平台 | 回复“该平台暂不支持”并结束，不尝试登录、抓取或制作；已有导出数据也不例外。 |
 | 来源未明 | 先看链接与上下文，仍无法确定时只询问一次平台。 |
 
-多平台识别不等于多平台功能已上线。本次只调整入口名称、简介和路由边界，采集、图片补全、页面框架、首图标定及发布确认流程均保留。
+多平台识别不等于其他社交平台采集已上线。微博沿用 v4.4.3 的采集与图片补全，原首图标定、页面风格及发布确认流程保留；本版新增的 photos 分支使用独立照片契约。
 
 ## 保留的首图点击优化
 
@@ -37,7 +48,7 @@ v4.4.2 基于客户版 v4.4.1 的轻量流程，修复“星标能点，物件�
 
 保留客户版的采集提速、断点续跑、先精选再补全文和图片、整册素材预算与发布续跑。具体规则见[首图标定与检查](references/scene-hotspots.md)。
 
-本轮验证：245 项 Python 回归、11 项前端回归；两种风格在桌面与手机上共 30 次合成物件实点通过。它们不代表真实账号端到端采集或客户现有线上页面已更新。
+v4.4.2 历史验证：245 项 Python 回归、11 项前端回归；两种风格在桌面与手机上共 30 次合成物件实点通过。它们不代表真实账号端到端采集或客户现有线上页面已更新。
 
 [查看更新前的完整版本](https://github.com/fly-YaoPro/weibo-life-archive/tree/codex/backup-before-scene-hotspot-20261103) · [查看验证范围](references/harness-validation.md)
 
@@ -49,13 +60,13 @@ v4.4.2 基于客户版 v4.4.1 的轻量流程，修复“星标能点，物件�
 
 当前客户版的小事为只读内容，不承诺旧版的计划编辑、打卡和导入导出；需要旧流程可使用备份分支。原有记录和手动资料不要覆盖。
 
-默认按执行日前滚动十年精选，每月最多 2 条、每年最多 24 条；用户已有明确选择则沿用。精选不是完整备份，缺年份和未覆盖部分如实说明。网页支持纸本与磨砂两种风格，默认只制作选定的一套。
+微博默认按执行日前滚动十年精选，每月最多 2 条、每年最多 24 条；用户已有明确选择则沿用。照片按本次主题及素材自然跨度，不套以上窗口与条数。精选不是完整备份，缺年份和未覆盖部分如实说明。网页支持纸本与磨砂两种风格，默认只制作选定的一套。
 
 ## 快速开始
 
 1. 下载完整仓库，保留 `SKILL.md`、`scripts/`、`references/` 和 `assets/` 的相对位置。客户端如按目录名识别 Skill，将解压后的目录命名为 `social-life-journal`。
 2. 交给支持本地 Skill 的 Agent，或放到客户端指定的 Skill 目录。Agent 需要文件读写、代码执行、浏览器与读图能力；插画生成及部署按宿主实际工具执行。
-3. 给目标主页和要求。登录账号只提供访问权限，不自动成为要整理的主页。
+3. 微博任务给目标主页；照片任务给本地原图、已授权的网盘相册，或参考图与检索范围。登录账号只提供访问权限，不自动成为要整理的主页。
 
 旧安装名若为 `weibo-life-archive`，更新时先识别安装位置，再迁移为 `social-life-journal`，避免同时加载两份。只更新 Skill 与配套资源，保留用户记录、图片、生成产物及采集断点，不自动重采。
 
@@ -69,6 +80,14 @@ v4.4.2 基于客户版 v4.4.1 的轻量流程，修复“星标能点，物件�
 ```
 
 工作项目放在 Skill 目录之外。新版不是“只换页面”的工具，也支持从零采集与中断续做。重做已有成品时复用数据，仅补实际缺项；安装新版 Skill 不会自动改变已经发布的网页。
+
+照片测试可从一句话开始：
+
+```text
+使用 $social-life-journal，参考这张猫的照片，在我选定的宠物相册里找其他时期可能是它的照片。
+不限年份，先给我看候选，不要直接做册子。
+优先使用当前可用的百度网盘连接器；取不到原图或拍摄时间就说明，不拿上传日期代替。
+```
 
 ## 图片与真实内容
 
@@ -126,13 +145,17 @@ python scripts/journal_run.py --source /工作区/source --output-root /工作�
 
 ## 版本与恢复
 
-默认分支 `main` 与页面顶部下载入口提供 v4.4.3。本次更名前的 v4.4.2 已完整备份在：
+默认分支 `main` 提供 v4.5.0-beta.1，供跨电脑实测照片分支。照片相关本地回归通过，网盘 MCP 的实际工具与原图能力仍需在目标宿主验证。
 
-[本版固定版本：v4.4.3](https://github.com/fly-YaoPro/weibo-life-archive/tree/generic-routing-20261106)
+[本版固定版本：v4.5.0-beta.1](https://github.com/fly-YaoPro/weibo-life-archive/tree/v4.5.0-beta.1)
 
-[旧版备份：v4.4.2](https://github.com/fly-YaoPro/weibo-life-archive/tree/backup-pre-generic-routing-20261106)
+[升级前完整备份：v4.4.3](https://github.com/fly-YaoPro/weibo-life-archive/tree/codex/backup-before-photo-memory-20261109)
 
 更早的版本仍保留：
+
+[v4.4.3 原固定分支](https://github.com/fly-YaoPro/weibo-life-archive/tree/generic-routing-20261106)
+
+[旧版备份：v4.4.2](https://github.com/fly-YaoPro/weibo-life-archive/tree/backup-pre-generic-routing-20261106)
 
 [旧版备份：v4.3.0](https://github.com/fly-YaoPro/weibo-life-archive/tree/codex/backup-before-scene-hotspot-20261103)
 

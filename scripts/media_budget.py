@@ -14,6 +14,7 @@ def apply_budget(built, max_mb=24):
         raise ValueError('book media budget must be positive finite MiB')
     runtime = built/'journal-data.js'
     data = json.loads(runtime.read_text(encoding='utf-8').split(' = ', 1)[1].rstrip(';\n'))
+    photo_mode = data.get('meta', {}).get('platform') == 'photos'
     from scene_geometry import validate_scene_geometry
     if data.get('story',{}).get('scene'):
         validate_scene_geometry(built, data['story']['scene'])
@@ -47,15 +48,31 @@ def apply_budget(built, max_mb=24):
         if after <= limit: break
     mapping = {}
     compression_fingerprints = {}
+    photo_fingerprints = {}
     for name, (content, fmt) in chosen.items():
         rel = str(Path(name).parent.as_posix()) + '/' + hashlib.sha256(content).hexdigest() + '.' + fmt
         (built/rel).write_bytes(content)
         mapping[name] = rel
         compression_fingerprints[hashlib.sha256(raw[name]).hexdigest()] = hashlib.sha256(content).hexdigest()
+        if photo_mode and name.startswith('images/'):
+            _, width, height = image_info(content)
+            photo_fingerprints[name] = {'sha256':hashlib.sha256(content).hexdigest(),
+                                        'width':width, 'height':height, 'exif_stripped':True}
     def rewrite(value):
         if isinstance(value, str): return mapping.get(value, value)
         if isinstance(value, list): return [rewrite(v) for v in value]
         if isinstance(value, dict):
+            # Photo intake fingerprints belong to the delivered image bytes, not
+            # the source file identity. Update every raw/runtime/story copy of
+            # that image before rewriting aliases; source_sha256 stays intact.
+            if photo_mode and value.get('image_id'):
+                changed = [photo_fingerprints[value[key]] for key in
+                           ('original_path','large_path','thumb_path','original','large','path')
+                           if isinstance(value.get(key), str) and value[key] in photo_fingerprints]
+                if changed:
+                    if any(item != changed[0] for item in changed[1:]):
+                        raise ValueError('photo image aliases compressed to different bytes; cannot assign one fingerprint')
+                    value = {**value, **changed[0]}
             # Only this controlled, whole-frame compression preserves geometry.
             # Arbitrary image replacement is rejected before this step.
             if value.get('image_sha256') in compression_fingerprints:

@@ -1,7 +1,9 @@
 /* Offline 1080px keepsake: profile, review, room, real posts, letter, three small things. */
 (()=>{
   'use strict';const D=window.JOURNAL_DATA,U=window.JournalUI,C=window.JournalCore;if(!D||!U||!C)return;
-  const {node,button,showModal,download,recordMedia}=U,byId=new Map(D.records.map(r=>[r.id,r])),glass=D.skin==='frosted';
+  const {node,button,showModal,download,recordMedia}=U,byId=new Map(D.records.map(r=>[r.id,r])),glass=D.skin==='frosted',photoMode=D.meta.platform==='photos';
+  const recordDate=r=>r.date_label||r.date||'日期待确认';
+  const dateOrder=(a,b)=>(a.date===null)-(b.date===null)||String(a.date||'').localeCompare(String(b.date||''));
   const P=glass?{ink:'#2d3c2c',muted:'#68785f',accent:'#718342',paper:'#eaf0e4',panel:'#ffffffbd',alt:'#f1f4dc'}:{ink:'#514132',muted:'#8d755c',accent:'#be5045',paper:'#fbf5e8',panel:'#fffbf2',alt:'#eef1df'};
   const face=(size,bold=false)=>`${bold?'600':'400'} ${size}px ${glass?'system-ui, sans-serif':'"Noto Serif CJK SC", "Songti SC", serif'}`;
   const rows=(ctx,text,width)=>String(text||'').split('\n').flatMap(p=>p?C.balancedLines(p,width,t=>ctx.measureText(t).width):['']);
@@ -42,7 +44,7 @@
     if(D.story.share?.entries?.length)return D.story.share.entries.map(e=>({...e,record:byId.get(e.source_id)}));
     const source=D.story.milestones?.length?D.story.milestones:D.story.themes,items=[...source];
     for(const theme of D.story.themes)if(!items.some(n=>theme.source_ids.some(id=>n.source_ids.includes(id))))items.push(theme);
-    return items.map(n=>{const records=n.source_ids.map(id=>byId.get(id)).filter(Boolean).sort((a,b)=>a.date.localeCompare(b.date));
+    return items.map(n=>{const records=n.source_ids.map(id=>byId.get(id)).filter(Boolean).sort(dateOrder);
       const record=records.find(r=>recordMedia(r).length)||records[0];return {title:n.title,text:n.text,source_id:record.id,record};});
   }
   async function renderPoster(){
@@ -54,10 +56,10 @@
     }
     try {
       await document.fonts.ready;const profile=D.meta.profile,wishes=D.story.wishes||[],letter=D.story.share?.letter_text||D.story.letter?.closing;
-    if(!profile?.name||!profile.avatar_path)throw new Error('主页资料还未准备好，暂时无法生成完整分享图');
+    if(!photoMode&&(!profile?.name||!profile.avatar_path))throw new Error('主页资料还未准备好，暂时无法生成完整分享图');
     if(!letter)throw new Error('分享图的来信还未准备好');
-    const entries=selectEntries().sort((a,b)=>a.record.date.localeCompare(b.record.date));if(entries.length>24)throw new Error('重点片段过多，请先整理为清晰的阶段');
-    const avatar=await trackedLoad(profile.avatar_path),scene=await trackedLoad(D.story.scene?.image_path);if(!scene)throw new Error('记忆小屋还未准备好');
+    const entries=selectEntries().sort((a,b)=>dateOrder(a.record,b.record));if(entries.length>24)throw new Error('重点片段过多，请先整理为清晰的阶段');
+    const avatar=photoMode?null:await trackedLoad(profile.avatar_path),scene=await trackedLoad(D.story.scene?.image_path);if(!scene&&!photoMode)throw new Error('记忆小屋还未准备好');
     const scratch=document.createElement('canvas').getContext('2d'),ops=[],breaks=[0],sections=[],imageSources=[];let y=72;
     function op(fn){ops.push(fn);}
     function panel(x,top,w,h,fill=P.panel){op(c=>{c.fillStyle=fill;c.beginPath();c.roundRect(x,top,w,h,glass?30:8);c.fill();c.strokeStyle=glass?'#ffffffbd':'#d9c4a081';c.lineWidth=1.5;c.stroke();if(!glass){c.strokeStyle='#d4bd972e';c.strokeRect(x+9,top+9,w-18,h-18);}});}
@@ -74,28 +76,36 @@
     op(c=>{if(glass){const g=c.createLinearGradient(0,0,1080,height);g.addColorStop(0,'#deebd0');g.addColorStop(.5,'#edf0e8');g.addColorStop(1,'#f3dfcc');c.fillStyle=g;}else c.fillStyle=P.paper;c.fillRect(0,0,1080,height);
       c.strokeStyle=glass?'#ffffff7d':'#cbb58f0f';c.lineWidth=1;for(let line=12;line<height;line+=glass?130:11){c.beginPath();c.moveTo(32,line);c.lineTo(1048,line);c.stroke();}
       c.strokeStyle=glass?'#ffffffab':'#ccb1888c';c.lineWidth=2;c.strokeRect(34,34,1012,height-68);c.setLineDash([4,8]);c.strokeRect(44,44,992,height-88);c.setLineDash([]);});
-    sections.push({kind:'profile',top:y});
+    if(!photoMode){sections.push({kind:'profile',top:y});
     text('微博里的这些年',82,y,32,920,P.accent,false,48);y+=62;
     op(c=>{c.save();c.beginPath();c.arc(148,yAvatar+64,66,0,Math.PI*2);c.fillStyle='#fffdf1';c.fill();c.clip();const scale=Math.max(128/avatar.width,128/avatar.height);c.drawImage(avatar,84+(128-avatar.width*scale)/2,yAvatar+(128-avatar.height*scale)/2,avatar.width*scale,avatar.height*scale);c.restore();});
     const yAvatar=y;const nameH=text(profile.name,254,y+3,62,746,P.ink,true,85);text('微博人生手账',254,y+nameH+9,34,746,P.muted,false,51);y+=Math.max(152,nameH+76);
     for(const [i,key,label] of [[0,'followers','粉丝'],[1,'following','关注'],[2,'engagement','转评赞']]){const x=80+i*314;panel(x,y,292,140,i===1?P.alt:P.panel);text(profile[key]?.display||'—',x+22,y+19,52,248,P.ink,true,68);text(label,x+22,y+88,32,248,P.muted,false,46);}
     imageSources.push({kind:'avatar',path:profile.avatar_path});y+=192;breaks.push(Math.ceil(y));
+    }else{
+      sections.push({kind:'photo_cover',top:y});text(D.meta.title||'照片回忆册',82,y,58,920,P.accent,true,82);y+=108;
+      const coverRecords=entries.map(e=>e.record).filter((r,i,all)=>r.images?.length&&all.findIndex(x=>x.id===r.id)===i).slice(0,3);
+      if(!coverRecords.length)throw new Error('回忆册还没有可展示的真实照片');
+      const width=coverRecords.length===1?880:coverRecords.length===2?414:268,gap=coverRecords.length===3?43:52;
+      for(const [i,record] of coverRecords.entries()){const asset=record.images[0],path=asset.original||asset.large||asset.path,im=await trackedLoad(path),x=100+i*(width+gap),h=330,scale=Math.min(width/im.width,h/im.height);photo(im,x,y,width,h,recordDate(record));imageSources.push({kind:'record',record_id:record.id,date:record.date,path,draw_bounds:{x:x+(width-im.width*scale)/2,y:y+(h-im.height*scale)/2,width:im.width*scale,height:im.height*scale}});}
+      y+=440;breaks.push(Math.ceil(y));
+    }
     section('review','回看总结');const reviewTop=y;scratch.font=face(66,true);const headH=rows(scratch,D.story.share?.headline||D.story.overview.headline,844).length*92;scratch.font=face(48);const bodyH=rows(scratch,D.story.share?.text||D.story.overview.text,844).length*78;panel(56,reviewTop-12,968,headH+bodyH+96,P.panel);
     text(D.story.share?.headline||D.story.overview.headline,98,y+18,66,844,P.ink,true,92);text(D.story.share?.text||D.story.overview.text,98,y+headH+42,48,844,P.ink,false,78);y+=headH+bodyH+126;breaks.push(Math.ceil(y));
-    section('scene','记忆小屋');const sceneH=920*scene.height/scene.width;photo(scene,80,y+8,920,sceneH,'把熟悉的日子，轻轻收好');imageSources.push({kind:'generated_scene',path:D.story.scene.image_path});y+=sceneH+118;breaks.push(Math.ceil(y));
-    section('posts','微博里的重要片段');
+    if(scene){section('scene','记忆小屋');const sceneH=920*scene.height/scene.width;photo(scene,80,y+8,920,sceneH,'把熟悉的日子，轻轻收好');imageSources.push({kind:'generated_scene',path:D.story.scene.image_path});y+=sceneH+118;breaks.push(Math.ceil(y));}
+    section('posts',photoMode?'照片里，一起经历的事':'微博里的重要片段');
     for(let i=0;i<entries.length;i++){
       const n=entries[i],record=n.record,asset=recordMedia(record)[0],path=asset?(asset.original||asset.large||asset.path):null,im=await trackedLoad(path),column=im?416:842,x=im?(i%2?94:566):110;
       scratch.font=face(52,true);const titleH=rows(scratch,n.title,column).length*76;scratch.font=face(46);const copyH=rows(scratch,n.text||record.text,column).length*74;
       const imH=im?Math.min(478,390*im.height/im.width):0,rowH=Math.max(112+titleH+copyH+38,imH+142),top=y;
       if(rowH>13800)throw new Error('单个片段过长，请先提炼重点内容');panel(56,top-12,968,rowH+24,i%2?P.alt:P.panel);
-      text(record.date.replaceAll('-','.'),x,top+20,40,column,P.accent,true,62);text(n.title,x,top+92,52,column,P.ink,true,76);text(n.text||record.text,x,top+108+titleH,46,column,P.ink,false,74);
-      if(im){const px=i%2?592:94,py=top+(rowH-imH-52)/2;photo(im,px,py,390,imH,asset.media_kind==='video-cover'?'那一天的视频封面':'那一天留下的照片');const scale=Math.min(390/im.width,imH/im.height);imageSources.push({kind:asset.media_kind==='video-cover'?'video_cover':'record',record_id:record.id,date:record.date,path,draw_bounds:{x:px+(390-im.width*scale)/2,y:py+(imH-im.height*scale)/2,width:im.width*scale,height:im.height*scale}});}
+      text(recordDate(record).replaceAll('-','.'),x,top+20,40,column,P.accent,true,62);text(n.title,x,top+92,52,column,P.ink,true,76);text(n.text||record.text,x,top+108+titleH,46,column,P.ink,false,74);
+      if(im){const px=i%2?592:94,py=top+(rowH-imH-52)/2;photo(im,px,py,390,imH,asset.media_kind==='video-cover'?'那一天的视频封面':photoMode?'相册里留下的照片':'那一天留下的照片');const scale=Math.min(390/im.width,imH/im.height);imageSources.push({kind:asset.media_kind==='video-cover'?'video_cover':'record',record_id:record.id,date:record.date,path,draw_bounds:{x:px+(390-im.width*scale)/2,y:py+(imH-im.height*scale)/2,width:im.width*scale,height:im.height*scale}});}
       flourish(i%2?1001:77,top+28,.55);y+=rowH+68;breaks.push(Math.ceil(y));
     }
     section('letter','给未来的信');const letterTop=y;scratch.font=face(48);const letterH=rows(scratch,letter,838).length*79;panel(56,y-12,968,letterH+86,P.panel);text(letter,108,y+22,48,838,P.ink,false,79);y+=letterH+126;breaks.push(Math.ceil(y));
     section('tomorrow','留给明天的小事');
-    for(let i=0;i<3;i++){
+    for(let i=0;i<wishes.length;i++){
       const wish=wishes[i],w=762;scratch.font=face(48,true);const th=rows(scratch,wish.title,w).length*71;scratch.font=face(44);const bh=rows(scratch,wish.text||wish.reason,w).length*71;const h=th+bh+60;panel(56,y-10,968,h,P.alt);
       op(c=>{c.fillStyle=glass?'#dce993':'#efd7aa';c.beginPath();c.arc(126,wishTop+39,32,0,Math.PI*2);c.fill();c.fillStyle=P.accent;c.font=face(32,true);c.textBaseline='middle';c.fillText(String(i+1).padStart(2,'0'),105,wishTop+39);});const wishTop=y;
       text(wish.title,184,y+16,48,w,P.ink,true,71);text(wish.text||wish.reason,184,y+24+th,44,w,P.ink,false,71);y+=h+35;breaks.push(Math.ceil(y));
@@ -126,7 +136,7 @@
       for(const [i,part] of result.blobs.entries()){const url=URL.createObjectURL(part.blob);studioURLs.push(url);const image=node('img','share-preview-image');image.src=url;image.alt='分享图'+(i+1);const sheet=node('figure','share-preview-sheet');if(result.blobs.length>1)sheet.append(node('figcaption','','第 '+(i+1)+' 张'));sheet.append(image);preview.append(sheet);const option=node('option','',String(i+1)+' / '+result.blobs.length);option.value=i;select.append(option);}
       status.textContent='上下滚动看看，喜欢的话就把它带走。';save.disabled=false;copy.disabled=false;select.hidden=result.blobs.length===1;
       select.onchange=()=>{selected=Number(select.value);preview.children[selected]?.scrollIntoView({block:'nearest',behavior:'smooth'});};
-      save.onclick=()=>download('微博人生手账_1080'+(result.blobs.length>1?'_'+(selected+1):'')+'.png',result.blobs[selected].blob);
+      save.onclick=()=>download((photoMode?'照片回忆册':'微博人生手账')+'_1080'+(result.blobs.length>1?'_'+(selected+1):'')+'.png',result.blobs[selected].blob);
       copy.onclick=async()=>{if(!navigator.clipboard?.write||typeof ClipboardItem==='undefined'){status.textContent='这个浏览器暂时无法复制图片，可以下载后分享。';return;}copy.disabled=true;
         try{await navigator.clipboard.write([new ClipboardItem({'image/png':result.blobs[selected].blob})]);status.textContent='图片已复制，可以贴到聊天里分享。';}
         catch(error){status.textContent='这次没有复制成功，可以下载图片后分享。';}finally{copy.disabled=false;}};

@@ -82,11 +82,11 @@ def verify_packed(path):
         for row in data['records']:
             for im in row['images']:paths.update([im['path'],im['large']])
         if not paths.issubset(assets): errors.append('内嵌资源缺失')
-        if data['meta']['platform']!='weibo': errors.append('平台不是微博')
+        if data['meta']['platform'] not in {'weibo','photos'}: errors.append('此来源暂不支持')
         if data['story'].get('bgm'):
             from prepare_music import validate_audio
             validate_audio(base64.b64decode(assets[data['story']['bgm']['path']].split(',',1)[1],validate=True))
-        return {'ok':not errors,'kind':'weibo','stage':'single_html','records':len(data['records']),
+        return {'ok':not errors,'kind':data['meta']['platform'],'stage':'single_html','records':len(data['records']),
                 'embedded_assets':len(assets),'errors':errors,
                 'warnings':['静态检查不证明视觉、交互或采集全量；首图实点按scene-hotspots.md单独核对，不要求全站重型浏览器验收']}
     except (ValueError,KeyError,AttributeError) as e:

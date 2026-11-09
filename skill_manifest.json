@@ -1,8 +1,14 @@
 {
-  "version": "4.4.3",
+  "version": "4.5.0-beta.1",
   "schema_version": 1,
   "required_files": [
     "agents/openai.yaml",
+    "references/photo-memory.md",
+    "references/photo-sourcing.md",
+    "scripts/photo_contract.py",
+    "scripts/photo_import.py",
+    "scripts/test_photo_import.py",
+    "scripts/test_photo_pipeline.py",
     "scripts/scene_geometry.py",
     "scripts/calibrate_scene.py",
     "scripts/test_scene_geometry.py",

@@ -286,6 +286,8 @@ def validate_experience(root, story, records, grounding_required=False, resource
             ids = refs(review)
             if not review.get("title") or not review.get("text") or type(review.get("year")) is not int:
                 raise ValueError("年度回顾需要年份、标题和正文")
+            if any(not isinstance(by_id[i].get("date"), str) for i in ids):
+                raise ValueError("年度回顾来源日期未知，不能把未定日期照片归入某一年")
             if any(int(by_id[i]["date"][:4]) != review["year"] for i in ids):
                 raise ValueError("年度回顾来源年份不匹配")
         except (ValueError, KeyError, TypeError, AttributeError) as exc:

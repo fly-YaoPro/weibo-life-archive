@@ -90,6 +90,12 @@ def validate_runtime(meta, records, story=None, root=None, assets=None):
     """Run the same essential contracts for source data, builders and one HTML."""
     if not isinstance(meta, dict) or not isinstance(records, list):
         raise ValueError('runtime: metadata需为对象，records需为数组')
+    if meta.get('platform') not in {'weibo', 'taobao', 'photos'}:
+        raise ValueError('runtime: 此来源暂不支持')
+    if meta.get('platform') == 'photos':
+        target = meta.get('target', {})
+        if not isinstance(target.get('collection_id'), str) or not target['collection_id'].strip():
+            raise ValueError('photos: 缺相册collection_id，不使用微博UID冒充照片来源')
     presentation = meta.get('presentation', {})
     if not isinstance(presentation, dict):
         raise ValueError('presentation需为对象')
@@ -126,12 +132,35 @@ def validate_runtime(meta, records, story=None, root=None, assets=None):
                 from weibo_web import permalink_mid
                 if permalink_mid(record.get('url',''),uid)!=rid:
                     raise ValueError('record.url: 原帖永久链接与真实mid不符')
-        when = record.get('date') or date_key(record.get('created_at', record.get('placed_at')))
-        if not start<=date.fromisoformat(when)<=end:
-            raise ValueError('record.date: 日期超出请求范围')
-        original_time=record.get('created_at',record.get('placed_at'))
-        if original_time and date_key(original_time)!=when:
-            raise ValueError('record.date: 展示日期与原始时间不符')
+        if meta.get('platform') == 'photos':
+            from photo_contract import photo_date, validate_photo_record, validate_photo_bytes
+            validate_photo_record(record, meta, resource)
+            image = record['images'][0]
+            for image_path in {image['thumb_path'],image['large_path']}:
+                if assets is not None:
+                    raw = base64.b64decode(assets[image_path].split(',',1)[1],validate=True)
+                else:
+                    raw = resource(image_path, RASTER).read_bytes()
+                validate_photo_bytes(image, raw, full_size=image_path==image['large_path'])
+            when = photo_date(record)
+            if when:
+                from calendar import monthrange
+                if len(when) == 4:
+                    first, last = date(int(when), 1, 1), date(int(when), 12, 31)
+                elif len(when) == 7:
+                    year, month = map(int, when.split('-'))
+                    first, last = date(year, month, 1), date(year, month, monthrange(year, month)[1])
+                else:
+                    first = last = date.fromisoformat(when)
+                if first > end or last < start:
+                    raise ValueError('record.date: 照片日期超出请求范围')
+        else:
+            when = record.get('date') or date_key(record.get('created_at', record.get('placed_at')))
+            if not start<=date.fromisoformat(when)<=end:
+                raise ValueError('record.date: 日期超出请求范围')
+            original_time=record.get('created_at',record.get('placed_at'))
+            if original_time and date_key(original_time)!=when:
+                raise ValueError('record.date: 展示日期与原始时间不符')
         text = record.get('text', '\n'.join(i.get('name', '') for i in record.get('items', [])))
         if not isinstance(text, str):
             raise ValueError('record.text需为文字')

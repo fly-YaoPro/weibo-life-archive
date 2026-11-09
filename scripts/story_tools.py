@@ -24,7 +24,8 @@ def source_index(root, candidates=False):
     indexed, pending = [], []
     for row in records:
         images = row.get('images', [])
-        indexed.append({'id': row['id'], 'created_at': row['created_at'], 'text': row.get('text', ''),
+        indexed.append({'id': row['id'], 'created_at': row.get('created_at'), 'date': row.get('date'),
+            'date_precision': row.get('date_precision'), 'date_basis': row.get('date_basis'), 'text': row.get('text', ''),
             'url': row.get('url'), 'text_status': row.get('text_status'),
             'expected_image_count': row.get('expected_image_count'),
             'image_inventory_status': row.get('image_inventory_status'),
@@ -49,7 +50,9 @@ def source_index(root, candidates=False):
         if reasons: pending.append({'source_id': row['id'], 'url': row.get('url'),
             'reasons': reasons, 'expected_image_count': row.get('expected_image_count'),
             'observed_source_image_count': observed_count, 'enumerated': len(images), 'failed_image_indexes': failed})
-    return {'source': {'project': str(root.resolve()), 'target_uid': load(root/'project_meta.json')['target']['uid'],
+    meta = load(root/'project_meta.json')
+    return {'source': {'project': str(root.resolve()), 'target_uid': meta['target'].get('uid'),
+                       'collection_id': meta['target'].get('collection_id'), 'platform': meta.get('platform'),
                        'file': 'candidates.json' if candidates else 'records.json',
                        'sha256': hashlib.sha256((root/('candidates.json' if candidates else 'records.json')).read_bytes()).hexdigest()},
             'records': indexed, 'pending': pending, 'record_count': len(indexed),

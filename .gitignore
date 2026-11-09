@@ -24,4 +24,11 @@ exports/
 progress.json
 image-audit.json
 journal-data.js
+.private/
+photo-reading.json
+photo-index.html
+photo-import-receipt.json
+story-scaffold.json
+.*.import-*/
+*.previous-*/
 *计划备份*.json

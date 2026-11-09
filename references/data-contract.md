@@ -1,5 +1,7 @@
 # 数据、素材与独立HTML契约
 
+照片回忆册使用独立的 `platform:photos` 契约，入口与日期精度规则见[照片回忆册](photo-memory.md)，不套用下文微博 UID/数字 mid/原帖 URL 约束。两种来源共用真实图片、叙事引用和离线资源校验；不能把其他未支持平台的社媒导出伪装成照片项目。
+
 ## 工作区与交付
 
 采集源与构建/交付目录分离；项目保留project_meta、coverage、records、story和断点。以下定义数据字段；执行顺序见[流水线](pipeline.md)，交付规则以[部署](deployment.md)为准。

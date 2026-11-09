@@ -12,7 +12,7 @@ from experience import validate_experience, validate_narrative, synthetic_fixtur
 from runtime_contract import validate_runtime
 from archive_common import date_key
 
-TITLES={'weibo':'人生手账','taobao':'消费手账'}
+TITLES={'weibo':'人生手账','taobao':'消费手账','photos':'照片回忆册'}
 STATUSES={'complete','partial','selected','unread','failed','empty'}
 FORBIDDEN_KEYS={'cookie','cookies','access_token','refresh_token','password','authorization','storage_state'}
 
@@ -79,7 +79,7 @@ def check(root,kind,stage='data'):
         else:
             err(field+': evidence image must be platform or authorized real user-provided media, not synthetic/stock')
     meta=load('project_meta.json');coverage=load('coverage.json')
-    records=load('records.json' if kind=='weibo' else 'orders.json')
+    records=load('records.json' if kind in {'weibo','photos'} else 'orders.json')
     for name,value in [('project_meta',meta),('coverage',coverage),('data',records)]:private_keys(value,name)
     if not isinstance(meta,dict):err('project_meta.json: expected object');meta={}
     if meta.get('platform')!=kind:err('project_meta.platform: does not match requested kind')
@@ -95,7 +95,27 @@ def check(root,kind,stage='data'):
     target=meta.get('target',{})
     if kind=='weibo':
         text(target.get('uid'),'target.uid');url(target.get('profile_url'),'target.profile_url')
-    if not isinstance(coverage,list):err('coverage.json: expected array');coverage=[]
+    elif kind=='photos':
+        text(target.get('collection_id'),'target.collection_id')
+    if kind=='photos':
+        if not isinstance(coverage,dict):
+            err('coverage.json: photos require a local-import coverage object')
+        else:
+            if coverage.get('scope')!='user_prepared_local_folder_only' or coverage.get('complete') is not False:
+                err('coverage.json: local photos cannot claim complete cloud/history coverage')
+            if coverage.get('status') not in {'selected','partial'}:
+                err('coverage.json: invalid local-photo coverage status')
+            if coverage.get('requested_range')!=bounds:
+                err('coverage.json: requested range differs from project_meta')
+            if isinstance(records,list):
+                for key,expected in (
+                    ('unknown_date_count',sum(r.get('date') is None for r in records if isinstance(r,dict))),
+                    ('partial_date_count',sum(r.get('date_precision') in {'year','month'} for r in records if isinstance(r,dict)))):
+                    if type(coverage.get(key)) is not int or coverage[key]!=expected:
+                        err('coverage.json.'+key+': does not match imported photos')
+        # Photo coverage is deliberately not a year-by-year platform crawl claim.
+        coverage=[]
+    elif not isinstance(coverage,list):err('coverage.json: expected array');coverage=[]
     years=set()
     for i,c in enumerate(coverage):
         field=f'coverage[{i}]'
@@ -108,7 +128,7 @@ def check(root,kind,stage='data'):
             v=c.get(key)
             if v is not None and (not isinstance(v,int) or isinstance(v,bool) or v<0):err(field+'.'+key+': count must be nonnegative integer or null')
         if c.get('status')=='empty' and c.get('saved_count')!=0:err(field+': empty must have confirmed zero saved_count')
-    if not coverage:warnings.append('No per-year coverage has been recorded')
+    if not coverage and kind!='photos':warnings.append('No per-year coverage has been recorded')
     if not isinstance(records,list):err('data JSON: expected array');records=[]
     seen=set();image_count=0;video_count=0;video_cover_count=0;unknown_amounts=0;narrative=None
     def timestamp(value,field):
@@ -128,15 +148,16 @@ def check(root,kind,stage='data'):
     for i,r in enumerate(records):
         field=f'data[{i}]'
         if not isinstance(r,dict):err(field+': expected object');continue
-        key='id' if kind=='weibo' else 'order_id';rid=r.get(key)
+        key='id' if kind in {'weibo','photos'} else 'order_id';rid=r.get(key)
         if text(rid,field+'.'+key):
             if rid in seen:err(field+': duplicate source ID')
             seen.add(rid)
-        timestamp(r.get('created_at' if kind=='weibo' else 'placed_at'),field+'.date')
-        url(r.get('url'),field+'.url')
-        if kind=='weibo':
+        if kind != 'photos':
+            timestamp(r.get('created_at' if kind=='weibo' else 'placed_at'),field+'.date')
+            url(r.get('url'),field+'.url')
+        if kind in {'weibo','photos'}:
             if not isinstance(r.get('text'),str) or (not r['text'].strip() and not r.get('images') and not r.get('is_video')):err(field+'.text: expected text or a real image/video record')
-            if r.get('author_uid')!=target.get('uid'):err(field+': author UID differs from target')
+            if kind=='weibo' and r.get('author_uid')!=target.get('uid'):err(field+': author UID differs from target')
             if not isinstance(r.get('selected'),bool):err(field+': selected must be boolean')
             images=r.get('images')
             if not isinstance(images,list):err(field+'.images: expected array');continue
@@ -220,7 +241,8 @@ def check(root,kind,stage='data'):
         grounding=meta.get('presentation',{}).get('grounding_required',False)
         normalized=[]
         try:
-            normalized=[{**r,'id':r.get('id',r.get('order_id')),'date':date_key(r.get('created_at',r.get('placed_at'))),
+            from photo_contract import photo_date
+            normalized=[{**r,'id':r.get('id',r.get('order_id')),'date':photo_date(r) if kind=='photos' else date_key(r.get('created_at',r.get('placed_at'))),
                          'text':r.get('text','\n'.join(item.get('name','') for item in r.get('items',[]) if isinstance(item,dict)))} for r in records if isinstance(r,dict)]
             contract=validate_runtime(meta,records,story,root=root)
             narrative=contract['narrative']
@@ -253,7 +275,7 @@ def check(root,kind,stage='data'):
                 rendered={r['id']:r['text'] for r in runtime['records']}
                 if rendered!=expected:err('journal-data.js: rendered source IDs/text differ from saved records')
             except (ValueError,KeyError,TypeError,IndexError) as error:err('journal-data.js: '+str(error))
-        datajs='data.js' if kind=='weibo' else 'orders.js'
+        datajs='data.js' if kind in {'weibo','photos'} else 'orders.js'
         for name in ('index.html','styles.css','app.js',datajs):local(name,name,required=True)
         html=(root/'index.html').read_text('utf-8') if (root/'index.html').is_file() else ''
         for tag,attr in (('script','src'),('link','href'),('img','src')):

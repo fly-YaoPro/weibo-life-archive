@@ -12,13 +12,14 @@ def check_story_project(root, kind='weibo'):
     errors, warnings = list(data['errors']), list(data['warnings'])
     try:
         meta = load(root / 'project_meta.json')
-        records = load(root / ('records.json' if kind == 'weibo' else 'orders.json'))
+        records = load(root / ('records.json' if kind in {'weibo','photos'} else 'orders.json'))
         from story_tools import compile_project
         story = compile_project(root)
         if not isinstance(story, dict) or not isinstance(records, list):
             raise ValueError('story must be an object and records must be an array')
+        from photo_contract import photo_date
         rows = [{**r, 'id': r.get('id', r.get('order_id')),
-                 'date': date_key(r.get('created_at', r.get('placed_at'))),
+                 'date': photo_date(r) if kind=='photos' else date_key(r.get('created_at', r.get('placed_at'))),
                  'text': r.get('text', '\n'.join(i.get('name', '') for i in r.get('items', [])))}
                 for r in records if isinstance(r, dict)]
         from story_shape import shape_errors
@@ -80,7 +81,7 @@ def check_story_project(root, kind='weibo'):
             except (ValueError, KeyError, TypeError, AttributeError, OSError) as exc:
                 errors.append(str(exc))
         try:
-            prepare(root, meta.get('skin', 'paper') if kind == 'weibo' else 'collage', story=story, pending_music=True)
+            prepare(root, meta.get('skin', 'paper') if kind in {'weibo','photos'} else 'collage', story=story, pending_music=True)
         except (ValueError, KeyError, TypeError, AttributeError, OSError) as exc:
             errors.append(str(exc))
     except (ValueError, KeyError, TypeError, AttributeError, OSError) as exc:
