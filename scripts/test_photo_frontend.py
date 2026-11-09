@@ -89,7 +89,7 @@ class PhotoFrontendTests(unittest.TestCase):
             output = Path(self.temp.name) / skin
             result = build(self.root, output, skin)
             self.assertEqual(result["records"], 1)
-            data = json.loads((output / "journal-data.js").read_text()[len("window.JOURNAL_DATA = "):-2])
+            data = json.loads((output / "journal-data.js").read_text(encoding='utf-8')[len("window.JOURNAL_DATA = "):-2])
             self.assertEqual(data["meta"]["actual_range"], {"start": None, "end": None})
             self.assertEqual(data["metrics"]["days"], {})
             self.assertTrue((output / "data.js").is_file())
@@ -97,21 +97,21 @@ class PhotoFrontendTests(unittest.TestCase):
             packed = Path(self.temp.name) / (skin + ".html")
             pack(output, packed)
             self.assertTrue(verify_packed(packed)["ok"])
-            self.assertIn('"images/photo.png": "data:image/png;base64,', packed.read_text())
+            self.assertIn('"images/photo.png": "data:image/png;base64,', packed.read_text(encoding='utf-8'))
         self.assertEqual(before, (self.root / "records.json").read_bytes())
 
     def test_reading_key_is_album_stable_not_first_photo_based(self):
         photo_fixture(self.root, (None,))
         first = prepare(self.root, "paper")["project_key"]
-        rows = json.loads((self.root / "records.json").read_text())
+        rows = json.loads((self.root / "records.json").read_text(encoding='utf-8'))
         digest = hashlib.sha256(b"replacement synthetic photo").hexdigest()
         rows[0]["id"] = "photo-" + digest[:24]
         rows[0]["source_sha256"] = digest
         rows[0]["images"][0]["image_id"] = rows[0]["id"]
-        old = json.loads((self.root / "story.json").read_text())
-        original_id = json.loads((self.root / "records.json").read_text())[0]["id"]
+        old = json.loads((self.root / "story.json").read_text(encoding='utf-8'))
+        original_id = json.loads((self.root / "records.json").read_text(encoding='utf-8'))[0]["id"]
         write(self.root, "records.json", rows)
-        (self.root / "story.json").write_text(json.dumps(old).replace(original_id, rows[0]["id"]))
+        (self.root / "story.json").write_text(json.dumps(old).replace(original_id, rows[0]["id"]),encoding='utf-8')
         self.assertEqual(first, prepare(self.root, "paper")["project_key"])
 
 

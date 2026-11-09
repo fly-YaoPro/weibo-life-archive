@@ -206,7 +206,7 @@ class HistoryTests(unittest.TestCase):
         untouched = Browser([])
         self.assertEqual(self.collect(untouched)['status'], 'handoff'); self.assertEqual(untouched.calls, [])
         self.assertFalse((self.root / 'history-pages').exists())
-        self.assertNotIn('PRIVATE', (self.root / 'history-state.json').read_text())
+        self.assertNotIn('PRIVATE', (self.root / 'history-state.json').read_text(encoding='utf-8'))
         self.assertEqual(resume_history_after_verification(Browser([]), self.root)['status'], 'verified')
 
     def test_failed_ingest_replays_saved_response_without_request(self):

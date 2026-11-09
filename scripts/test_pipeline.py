@@ -351,7 +351,7 @@ class BrowserHelperTests(unittest.TestCase):
             budget = RouteBudget(state_path=checkpoint)
             self.assertEqual(budget.run("detail_api", failed)["status"], "fallback")
             self.assertEqual(calls, ["detail", "detail"])
-            self.assertNotIn("response body", checkpoint.read_text())
+            self.assertNotIn("response body", checkpoint.read_text(encoding='utf-8'))
             self.assertEqual(budget.run("list_api", lambda: ["cached list"])["value"], ["cached list"])
             budget.resume("detail_api")
             self.assertEqual(RouteBudget(state_path=checkpoint).run("detail_api", lambda: "verified")["status"], "ready")
@@ -369,7 +369,7 @@ class BrowserHelperTests(unittest.TestCase):
                 self.assertEqual(RouteBudget(state_path=checkpoint).run("detail_api", denied)["status"], "handoff")
                 self.assertEqual(RouteBudget(state_path=checkpoint).run("detail_api", denied)["status"], "handoff")
                 self.assertEqual(calls, [code])
-                self.assertNotIn("private", checkpoint.read_text())
+                self.assertNotIn("private", checkpoint.read_text(encoding='utf-8'))
 
     def test_success_resets_consecutive_failures_and_business_errors_are_recorded(self):
         budget = RouteBudget()

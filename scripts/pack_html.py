@@ -11,7 +11,7 @@ from archive_common import project_file
 
 def render_html(root):
     root = Path(root).resolve()
-    text = (root / 'journal-data.js').read_text()
+    text = (root / 'journal-data.js').read_text(encoding='utf-8-sig')
     data = json.loads(text.split(' = ', 1)[1].rstrip(';\n'))
     assets = {}
     paths = set(data.get('extra_paths', []))
@@ -27,16 +27,16 @@ def render_html(root):
                 mime = 'image/jpeg' if fmt == 'jpg' else 'image/' + fmt
             except ValueError: pass
         assets[name] = 'data:' + mime + ';base64,' + base64.b64encode(p.read_bytes()).decode('ascii')
-    html = (root / 'index.html').read_text()
+    html = (root / 'index.html').read_text(encoding='utf-8-sig')
     def stylesheet(m):
-        return '<style>\n' + project_file(root, m[1]).read_text() + '\n</style>'
+        return '<style>\n' + project_file(root, m[1]).read_text(encoding='utf-8-sig') + '\n</style>'
     html = re.sub(r'<link rel="stylesheet" href="([^"]+)">', stylesheet, html)
     favicon = base64.b64encode((root / 'favicon.svg').read_bytes()).decode()
     html = html.replace('href="favicon.svg"', 'href="data:image/svg+xml;base64,' + favicon + '"')
     embedded = 'window.JOURNAL_ASSETS=' + json.dumps(assets, ensure_ascii=False).replace('<', '\\u003c') + ';\n'
     html = html.replace('<script src="journal-data.js"></script>', '<script>\n' + embedded + text + '\n</script>')
     def script(m):
-        code = project_file(root, m[1]).read_text()
+        code = project_file(root, m[1]).read_text(encoding='utf-8-sig')
         if re.search(r'</script', code, re.I): raise ValueError('脚本包含需转义的关闭标签')
         return '<script>\n' + code + '\n</script>'
     html = re.sub(r'<script src="([^"]+)"></script>', script, html)
@@ -72,7 +72,7 @@ def verify_packed(path):
             a=dict(attrs)
             value=a.get('src') if tag in ('script','img','audio') else a.get('href') if tag=='link' else None
             if value and not value.startswith('data:'): self.external.append(value)
-    html=Path(path).read_text();p=Links();p.feed(html);errors=[]
+    html=Path(path).read_text(encoding='utf-8-sig');p=Links();p.feed(html);errors=[]
     if p.external: errors.append('HTML仍有外部资源: '+str(p.external))
     try:
         a=re.search(r'window.JOURNAL_ASSETS=(.*?);\n',html).group(1)

@@ -7,6 +7,7 @@
 | 阶段 | 权威入口 |
 | --- | --- |
 | 采集/主页 | [collection](collection.md)、[profile](profile.md)、[Doubao适配](harness-doubao.md) |
+| 网盘/本地/系统相册 | [数据源接入](photo-sourcing.md)、[照片读图与成册](photo-memory.md)，`photo_import.py` 后接 `photo_authoring.py` |
 | 本地命令/编译辅助 | [pipeline](pipeline.md)、[efficiency](efficiency.md) |
 | 数据字段/叙事/配图 | [data-contract](data-contract.md)、[editorial](editorial.md)、[images](images.md) |
 | 首尾插画/实际参考图 | [image-direction](image-direction.md)、[case-effects](case-effects.md) |

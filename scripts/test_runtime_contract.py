@@ -48,7 +48,7 @@ class RuntimeContractTests(unittest.TestCase):
         save(self.root/'story.json',story);music(self.root,offline=True)
         self.output=Path(self.temp.name)/'built';build(self.root,self.output,'paper')
         self.html=Path(self.temp.name)/'synthetic.html';pack(self.output,self.html)
-        self.original=self.html.read_text();self.data=json.loads(re.search(r'window.JOURNAL_DATA = (.*?);\n',self.original).group(1))
+        self.original=self.html.read_text(encoding='utf-8');self.data=json.loads(re.search(r'window.JOURNAL_DATA = (.*?);\n',self.original).group(1))
 
     def tearDown(self):self.temp.cleanup()
 

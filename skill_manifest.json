@@ -1,5 +1,5 @@
 {
-  "version": "4.5.0-beta.1",
+  "version": "4.5.0-beta.2",
   "schema_version": 1,
   "required_files": [
     "agents/openai.yaml",
@@ -7,6 +7,11 @@
     "references/photo-sourcing.md",
     "scripts/photo_contract.py",
     "scripts/photo_import.py",
+    "scripts/photo_sources.py",
+    "scripts/photo_authoring.py",
+    "scripts/test_photo_sources.py",
+    "scripts/test_photo_authoring.py",
+    "scripts/test_pack_encoding.py",
     "scripts/test_photo_import.py",
     "scripts/test_photo_pipeline.py",
     "scripts/scene_geometry.py",

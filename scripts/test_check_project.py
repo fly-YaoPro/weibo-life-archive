@@ -104,11 +104,11 @@ class Checks(unittest.TestCase):
         self.run_case('weibo',mutate,False)
     def test_synthetic_fixture_media_requires_explicit_title_label_and_reference(self):
         def mutate(r,n,x):
-            meta=json.loads((r/'project_meta.json').read_text());meta.update(title='合成演示',fixture={'synthetic':True,'label':'合成测试','source':'existing synthetic demo'});put(r,'project_meta.json',meta)
+            meta=json.loads((r/'project_meta.json').read_text(encoding='utf-8'));meta.update(title='合成演示',fixture={'synthetic':True,'label':'合成测试','source':'existing synthetic demo'});put(r,'project_meta.json',meta)
             x[0]['images']=[{'origin':'synthetic_fixture','provided_reference':'existing explicit synthetic demo','download_status':'unavailable'}];put(r,n,x)
         self.run_case('weibo',mutate,False)
         def unlabeled(r,n,x):
-            mutate(r,n,x);meta=json.loads((r/'project_meta.json').read_text());meta['title']='用户手账';put(r,'project_meta.json',meta)
+            mutate(r,n,x);meta=json.loads((r/'project_meta.json').read_text(encoding='utf-8'));meta['title']='用户手账';put(r,'project_meta.json',meta)
         self.run_case('weibo',unlabeled,False)
     def test_final_rejects_semantic_mutations_beyond_existing_id_attributes(self):
         from build_journal import build
@@ -116,19 +116,19 @@ class Checks(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             source=Path(d)/'source';source.mkdir();build_fixture(source)
             # Supply the source-only metadata required by the independent checker.
-            meta=json.loads((source/'project_meta.json').read_text());meta['target']['profile_url']='https://weibo.com/u/synthetic';write(source,'project_meta.json',meta)
-            records=json.loads((source/'records.json').read_text());records[0].update(author_uid='synthetic',selected=True,url='https://example.invalid/demo');write(source,'records.json',records)
+            meta=json.loads((source/'project_meta.json').read_text(encoding='utf-8'));meta['target']['profile_url']='https://weibo.com/u/synthetic';write(source,'project_meta.json',meta)
+            records=json.loads((source/'records.json').read_text(encoding='utf-8'));records[0].update(author_uid='synthetic',selected=True,url='https://example.invalid/demo');write(source,'records.json',records)
             output=Path(d)/'built';build(source,output,'paper')
             self.assertTrue(check(output,'weibo','final')['ok'])
-            story=json.loads((output/'story.json').read_text())
+            story=json.loads((output/'story.json').read_text(encoding='utf-8'))
             base=copy.deepcopy(story)
-            js=output/'journal-data.js';original_js=js.read_text()
+            js=output/'journal-data.js';original_js=js.read_text(encoding='utf-8')
             runtime=json.loads(original_js.split(' = ',1)[1].rstrip(';\n'))
             runtime['story']['themes'].append({**runtime['story']['themes'][0],'id':'runtime-duplicate'})
-            js.write_text('window.JOURNAL_DATA = '+json.dumps(runtime,ensure_ascii=False)+';\n')
+            js.write_text('window.JOURNAL_DATA = '+json.dumps(runtime,ensure_ascii=False)+';\n',encoding='utf-8')
             result=check(output,'weibo','final');self.assertFalse(result['ok'])
             self.assertTrue(any('journal-data.js' in error and 'differs' in error for error in result['errors']))
-            js.write_text(original_js)
+            js.write_text(original_js,encoding='utf-8')
             for mutation,match in ((lambda s:s['overview'].update(source_ids=[]),'来源'),
                                    (lambda s:s['themes'][0].update(excerpt='凭空编造的原话'),'摘句'),
                                    (lambda s:s.update(wishes=[{'id':'w','title':'测试','text':'测试','source_ids':['missing']}]),'来源'),
@@ -149,11 +149,11 @@ class Checks(unittest.TestCase):
             output=Path(d)/'built';build(source,output,'paper')
             target=Path(d)/'fixture.html';pack(output,target)
             self.assertTrue(check(target,'weibo','final')['ok'])
-            html=target.read_text();import re
+            html=target.read_text(encoding='utf-8');import re
             match=re.search(r'window.JOURNAL_DATA = (.*?);\n',html)
             data=json.loads(match.group(1));data['story']['themes'].append({**data['story']['themes'][0],'id':data['story']['themes'][0]['id']})
             html=html[:match.start(1)]+json.dumps(data,ensure_ascii=False)+html[match.end(1):]
-            target.write_text(html)
+            target.write_text(html,encoding='utf-8')
             result=check(target,'weibo','final');self.assertFalse(result['ok'],result)
             self.assertTrue(any('重复' in error for error in result['errors']))
     def test_valid_final_and_external_script_rejected(self):

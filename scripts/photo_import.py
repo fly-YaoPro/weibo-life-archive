@@ -1,6 +1,7 @@
 """Read-only local photo intake; exports EXIF-free copies and an auditable manifest.
 
-No cloud login/crawl is implemented here. Run only on a user-prepared local folder.
+No cloud login/crawl or native Photos database reading is implemented here.
+Run on a user-selected exported photo folder or ZIP; originals are never changed.
 """
 import argparse
 import calendar
@@ -16,6 +17,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from photo_contract import RASTER, filename_date, photo_date, photo_date_label, validate_photo_record
+from photo_sources import HEIF, PLACEHOLDER_SUFFIXES, is_placeholder, native_library_path, prepare_photo_source
 
 
 def _pillow():
@@ -23,6 +25,13 @@ def _pillow():
         from PIL import Image, ImageOps
     except ImportError:
         raise RuntimeError('照片导入需要Pillow；请在允许的运行环境中安装后重试。不会自动pip安装。') from None
+    # Register an already installed optional decoder only; never install one.
+    try:
+        import pillow_heif
+    except ImportError:
+        pass
+    else:
+        pillow_heif.register_heif_opener()
     return Image, ImageOps
 
 
@@ -125,7 +134,10 @@ def _safe_files(source):
         base = Path(current)
         for name in list(dirs):
             candidate = base / name
-            if candidate.is_symlink() or not candidate.resolve().is_relative_to(source):
+            if native_library_path(candidate):
+                dirs.remove(name)
+                rejected.append({'file': candidate.relative_to(source).as_posix(), 'reason': 'native_photo_library_requires_export: 已跳过资料库，需导出选定原片', 'kind': 'unreadable_directory'})
+            elif candidate.is_symlink() or not candidate.resolve().is_relative_to(source):
                 dirs.remove(name)
                 rejected.append({'file': candidate.relative_to(source).as_posix(), 'reason': 'unsafe_directory_link'})
         for name in names:
@@ -153,7 +165,21 @@ def _date_interval(value):
 
 def _clean_image(path):
     Image, ImageOps = _pillow()
-    with Image.open(path) as image:
+    if is_placeholder(path):
+        raise ValueError('cloud_placeholder_requires_download: 文件仍是云端占位，请在原平台完整下载后重试')
+    if path.stat().st_size == 0:
+        raise ValueError('empty_photo_requires_download_or_reexport: 文件为空，未取得可显示图片')
+    # Pillow identifies the bytes, not the suffix: some cloud downloads return
+    # JPEG bytes under an original .HEIC filename, which needs no HEIF decoder.
+    try:
+        decoded = Image.open(path)
+    except (OSError, ValueError) as error:
+        if path.suffix.lower() in HEIF:
+            Image.init()
+            if not any(extension in Image.registered_extensions() for extension in HEIF):
+                raise ValueError('heif_decoder_unavailable: 当前环境不能解码真实HEIC/HEIF；请由相册导出JPEG/PNG副本，或在获准环境配置解码器；不会自动安装') from error
+        raise
+    with decoded as image:
         if getattr(image, 'n_frames', 1) != 1:
             raise ValueError('multiframe_image_not_imported: 请提供单帧照片，不静默丢帧')
         image.load()  # Decode completely; verify header alone does not prove a readable image.
@@ -294,6 +320,16 @@ def _readme_index(records, output):
 
 
 def import_photos(source, output, manifest=None, collection_id=None, collection_name=None, synthetic_fixture=False, resume=False, requested_start=None, requested_end=None):
+    """Accept a selected export folder/ZIP and retain the same photos contract."""
+    with prepare_photo_source(source, output) as selected:
+        # Do not read existing project metadata here: output link/path guards
+        # must run first. The directory importer derives identity afterwards.
+        return _import_photos_directory(selected.root, output, manifest, collection_id, collection_name,
+                                       synthetic_fixture, resume, requested_start, requested_end,
+                                       source_kind=selected.kind, original_source=selected.original)
+
+
+def _import_photos_directory(source, output, manifest=None, collection_id=None, collection_name=None, synthetic_fixture=False, resume=False, requested_start=None, requested_end=None, *, source_kind='exported_photo_folder', original_source=None):
     """Import to a new project, or transactionally resume while preserving manual story.
 
     Resume keeps a recoverable sibling snapshot. Return a receipt, not a completion claim.
@@ -311,13 +347,16 @@ def import_photos(source, output, manifest=None, collection_id=None, collection_
         raise ValueError('source与output必须分离，不能互相包含')
     if output.is_symlink():
         raise ValueError('output不能是符号链接')
-    if output.exists() and not resume:
+    # Tools commonly create the requested directory before invoking this script.
+    # An exactly empty directory is a fresh import, not a malformed resume project.
+    output_is_empty = output.is_dir() and not any(output.iterdir())
+    if output.exists() and not resume and not output_is_empty:
         raise FileExistsError('输出目录已存在；请选择新目录或明确--resume，不覆盖现有故事')
     items = _manifest(manifest)
     existing_meta = {}
     previous_by_hash = {}
     metadata_by_id = {}
-    if output.exists():
+    if output.exists() and not output_is_empty:
         if not output.is_dir():
             raise ValueError('已有output不是目录')
         for child in output.rglob('*'):
@@ -346,7 +385,8 @@ def import_photos(source, output, manifest=None, collection_id=None, collection_
                 if previous_record and previous_record['id'] == entry['source_id']:
                     metadata_by_id[entry['source_id']] = entry
     target = existing_meta.get('target', {})
-    collection_id = collection_id or target.get('collection_id') or 'collection-' + _sha(str(source).encode())[:16]
+    # Use the stable selected archive/folder, never ZIP's disposable scratch path.
+    collection_id = collection_id or target.get('collection_id') or 'collection-' + _sha(str(original_source or source).encode())[:16]
     collection_name = collection_name or target.get('collection_name') or '照片回忆册'
     if target and target.get('collection_id') != collection_id:
         raise ValueError('resume不能更换相册collection_id')
@@ -364,7 +404,7 @@ def import_photos(source, output, manifest=None, collection_id=None, collection_
             'requested_range': {'start': requested_start, 'end': requested_end},
             'target': {'collection_id': collection_id, 'collection_name': collection_name},
             'presentation': {**existing_meta.get('presentation', {}), 'grounding_required': True},
-            'photo_import': {'version': 1, 'cloud_acquisition_verified': False, 'date_policy': 'EXIF DateTimeOriginal / user manifest / explicit filename; never mtime or upload date',
+            'photo_import': {'version': 1, 'source_kind': source_kind, 'cloud_acquisition_verified': False, 'date_policy': 'EXIF DateTimeOriginal / user manifest / explicit filename; never mtime or upload date',
                              'requested_range_explicit': {'start': explicit_start, 'end': explicit_end},
                              'range_policy': 'automatic bounds use the actual known photo-date span, without a decade quota; explicit user bounds stay unchanged; partial record dates stay partial; unknown dates have only an unrestricted technical guard'}}
     if synthetic_fixture:
@@ -380,14 +420,18 @@ def import_photos(source, output, manifest=None, collection_id=None, collection_
         image_dir.mkdir(parents=True, exist_ok=True)
         files, failures = _safe_files(source)
         scan_failures = list(failures)
-        supported = sorted([(rel, path) for rel, path in files if path.suffix.lower() in RASTER], key=lambda pair: (pair[0] not in items, pair[0]))
-        unsupported = [rel for rel, path in files if path.suffix.lower() not in RASTER]
+        supported = sorted([(rel, path) for rel, path in files if path.suffix.lower() in RASTER | HEIF], key=lambda pair: (pair[0] not in items, pair[0]))
+        unsupported = [rel for rel, path in files if path.suffix.lower() not in RASTER | HEIF]
+        failures.extend({'file': rel, 'reason': 'cloud_placeholder_requires_download: 本地只有占位标记，需先下载原片'}
+                        for rel, path in files if path.suffix.lower() in PLACEHOLDER_SUFFIXES)
         missing = sorted(set(items) - {rel for rel, _ in files})
         failures.extend({'file': rel, 'reason': 'manifest_file_missing'} for rel in missing)
         records, hashes, audit, similar = [], {}, [], []
         duplicates, reused = [], 0
         for rel, path in supported:
             try:
+                if is_placeholder(path):
+                    raise ValueError('cloud_placeholder_requires_download: 文件仍是云端占位，请在原平台完整下载后重试')
                 raw = path.read_bytes()
                 digest = _sha(raw)
                 item = items.get(rel, {})
@@ -492,6 +536,7 @@ def import_photos(source, output, manifest=None, collection_id=None, collection_
                     'time_scope': meta['time_scope'],
                     'note': '只证明本次提供的本地素材导入情况，不证明网盘或历史照片齐全；按用户选择的照片自然跨度制作，日期不明或精度不足不补造月日。'}
         receipt = {'ok': not failures, 'stage': 'local_photo_import', 'cloud_acquisition_verified': False, 'finished_at': datetime.now(timezone.utc).isoformat(),
+                   'source_kind': source_kind,
                    'total_files': len(files) + len(scan_failures),
                    'total_files_is_exact': not scan_failures,
                    'unreadable_paths': [failure['file'] for failure in scan_failures if failure.get('kind') == 'unreadable_directory'],
@@ -505,7 +550,7 @@ def import_photos(source, output, manifest=None, collection_id=None, collection_
         _json(stage / 'coverage.json', coverage)
         _json(stage / 'records.json', records)
         _json(stage / 'photo-import-receipt.json', receipt)
-        _json(stage / '.private' / 'import-audit.json', {'source_directory': str(source), 'files': audit, 'never_publish': True})
+        _json(stage / '.private' / 'import-audit.json', {'source_directory': str(original_source or source), 'source_kind': source_kind, 'files': audit, 'never_publish': True})
         _json(stage / '.private' / 'photo-metadata.json', {'schema_version': 1, 'never_publish': True,
               'policy': 'Private local metadata clues only. No reverse geocoding, identity guessing, or device profiling. Do not render or upload GPS/source paths. EXIF-free copies remain separate.',
               'photos': [metadata_by_id.get(record['id'], _unavailable_metadata(record)) for record in records]})

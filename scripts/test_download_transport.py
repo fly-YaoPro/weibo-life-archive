@@ -180,7 +180,7 @@ class DownloadTransportTests(unittest.TestCase):
         r = self._collect(fake, max_pages=1, deadline_seconds=60)
         self.assertEqual(r['status'], 'ready')
         self.assertEqual(r['cache_hits'], 0)  # bad cache could not be a hit
-        self.assertEqual(json.loads(bad_cache.read_text())['ok'], 1)
+        self.assertEqual(json.loads(bad_cache.read_text(encoding='utf-8'))['ok'], 1)
         fake.cleanup()
 
     def test_valid_cache_is_a_network_free_hit(self):

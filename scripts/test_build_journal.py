@@ -66,7 +66,7 @@ class BuilderTests(unittest.TestCase):
         self.mutate(lambda s:s['overview'].update(opening='开场白',portrait={'text':'有据的日常解析','source_ids':['missing']}))
         with self.assertRaises(ValueError):prepare(self.root,'paper')
     def test_required_cover_blocks_missing_editorial_content(self):
-        meta=json.loads((self.root/'project_meta.json').read_text());meta['presentation']={'cover_required':True};write(self.root,'project_meta.json',meta)
+        meta=json.loads((self.root/'project_meta.json').read_text(encoding='utf-8'));meta['presentation']={'cover_required':True};write(self.root,'project_meta.json',meta)
         with self.assertRaises(ValueError):prepare(self.root,'paper')
         self.mutate(lambda s:s['overview'].update(opening='翻开这些日子。',portrait={'text':'这些记录里出现了窗台的新叶。','source_ids':['demo-1']}))
         self.assertTrue(prepare(self.root,'paper')['story']['overview']['portrait'])
@@ -92,7 +92,7 @@ class BuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, '主题ID'): prepare(self.root, 'paper')
 
     def test_source_ids_are_sufficient_without_keyword_coverage(self):
-        meta = json.loads((self.root / "project_meta.json").read_text())
+        meta = json.loads((self.root / "project_meta.json").read_text(encoding='utf-8'))
         meta["presentation"] = {"grounding_required": True}
         write(self.root, "project_meta.json", meta)
         data=prepare(self.root,"paper")
@@ -102,7 +102,7 @@ class BuilderTests(unittest.TestCase):
         from test_pipeline import png
         (self.root / "images").mkdir()
         (self.root / "images/cover.png").write_bytes(png())
-        records = json.loads((self.root / "records.json").read_text())
+        records = json.loads((self.root / "records.json").read_text(encoding='utf-8'))
         records[0]['url']='https://example.invalid/synthetic-video'
         records[0].update(is_video=True, video={"source_url": records[0]["url"], "cover_status": "observed", "covers": [
             {"origin": "platform", "source_url": "https://example.org/synthetic-cover.png", "download_status": "saved", "thumb_path": "images/cover.png", "large_path": "images/cover.png"}]})
@@ -119,10 +119,10 @@ class BuilderTests(unittest.TestCase):
         packed = Path(self.temp.name) / "video.html"
         pack(output, packed)
         self.assertTrue(verify_packed(packed)["ok"])
-        self.assertIn('"images/cover.png": "data:', packed.read_text())
+        self.assertIn('"images/cover.png": "data:', packed.read_text(encoding='utf-8'))
 
     def test_missing_video_cover_is_honest_and_does_not_drop_post(self):
-        records = json.loads((self.root / "records.json").read_text())
+        records = json.loads((self.root / "records.json").read_text(encoding='utf-8'))
         records[0]['url']='https://example.invalid/synthetic-video'
         records[0].update(is_video=True, video={"source_url": records[0]["url"], "cover_status": "unavailable", "covers": []})
         write(self.root, "records.json", records)

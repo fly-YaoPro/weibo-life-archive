@@ -23,7 +23,10 @@ from photo_import import import_photos
 class PhotoImportTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
+        # macOS may expose /var/... while resolve() uses /private/var/....
+        # Match the importer's canonical paths in filesystem mocks; do not make
+        # a security assertion depend on the spelling returned by tempfile.
+        self.root = Path(self.temp.name).resolve()
         self.source = self.root / 'synthetic-photos'
         self.source.mkdir()
         self.output = self.root / 'project'
@@ -90,7 +93,7 @@ class PhotoImportTests(unittest.TestCase):
         path = self.photo('one.jpg')
         (self.source / 'copy.jpg').write_bytes(path.read_bytes())
         (self.source / 'broken.jpg').write_bytes(b'not an image')
-        (self.source / 'notes.txt').write_text('synthetic unrelated file')
+        (self.source / 'notes.txt').write_text('synthetic unrelated file', encoding='utf-8')
         receipt = self.run_import()
         self.assertFalse(receipt['ok'])
         self.assertEqual(receipt['total_files'], 4)
@@ -146,9 +149,9 @@ class PhotoImportTests(unittest.TestCase):
         self.assertEqual(receipt['unique_imported'], 1)
         self.assertTrue(any(failure['reason'] == 'unsafe_file_link' for failure in receipt['failures']))
 
-    def test_simulated_symlink_escape_not_read_on_windows(self):
+    def test_simulated_symlink_escape_is_reported_on_every_platform(self):
         self.photo('safe.jpg')
-        blocked = self.photo('escape.jpg', 'blue')
+        blocked = self.photo('escape.jpg', 'blue').resolve()
         real_is_symlink = Path.is_symlink
         def is_symlink(path):
             return path == blocked or real_is_symlink(path)
@@ -243,7 +246,7 @@ class PhotoImportTests(unittest.TestCase):
     def test_permission_denied_directory_is_counted_and_blocks_ok(self):
         self.photo('safe.jpg')
         self.photo('blocked/hidden.jpg', 'blue')
-        denied = self.source / 'blocked'
+        denied = (self.source / 'blocked').resolve()
         original_scandir = os.scandir
         def guarded_scandir(path):
             if Path(path) == denied:
@@ -258,6 +261,41 @@ class PhotoImportTests(unittest.TestCase):
         self.assertEqual(receipt['unique_imported'], 1)
         self.assertEqual(receipt['failed_count'], 1)
         self.assertTrue(any('PermissionError' in item['reason'] for item in receipt['failures']))
+        self.assertEqual(self.load('coverage.json')['status'], 'partial')
+
+    def test_security_mocks_use_canonical_targets_for_aliased_source(self):
+        self.photo('safe.jpg')
+        blocked = self.photo('escape.jpg', 'blue').resolve()
+        self.photo('blocked/hidden.jpg', 'green')
+        denied = (self.source / 'blocked').resolve()
+        # A portable lexical alias exercises the same source normalization as
+        # macOS /var -> /private/var without needing symlink privileges.
+        alias_parent = self.root / 'alias-parent'
+        alias_parent.mkdir()
+        self.source = alias_parent / '..' / self.source.name
+        self.assertNotEqual(self.source, self.source.resolve())
+        real_is_symlink = Path.is_symlink
+        original_scandir = os.scandir
+
+        def is_symlink(path):
+            return path == blocked or real_is_symlink(path)
+
+        def guarded_scandir(path):
+            if Path(path) == denied:
+                raise PermissionError(13, 'synthetic denied directory', str(path))
+            return original_scandir(path)
+
+        with patch.object(Path, 'is_symlink', is_symlink), patch('photo_import.os.scandir', side_effect=guarded_scandir):
+            receipt = self.run_import()
+        self.assertFalse(receipt['ok'])
+        self.assertEqual(receipt['unique_imported'], 1)
+        self.assertEqual(receipt['failed_count'], 2)
+        self.assertFalse(receipt['total_files_is_exact'])
+        self.assertEqual(receipt['unreadable_paths'], ['blocked'])
+        reasons = [failure['reason'] for failure in receipt['failures']]
+        self.assertIn('unsafe_file_link', reasons)
+        self.assertTrue(any('PermissionError' in reason for reason in reasons))
+        self.assertEqual(len(self.load('records.json')), 1)
         self.assertEqual(self.load('coverage.json')['status'], 'partial')
 
     def test_default_range_uses_old_photo_actual_year_without_adding_a_decade(self):

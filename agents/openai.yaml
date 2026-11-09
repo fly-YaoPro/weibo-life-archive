@@ -1,4 +1,4 @@
 interface:
   display_name: "社媒人生手帐"
-  short_description: "将微博记录或选定照片整理成可回看、翻日历和分享的手帐；照片按主题取材，不限十年"
-  default_prompt: "使用 $social-life-journal，按我提供的微博主页、选定相册或参考图需求找素材并制作手帐；照片不限十年，未知日期不编造，公开部署前先让我确认。"
+  short_description: "把微博、网盘或本地相册里的图文整理成有故事、能翻日历与分享的人生手帐"
+  default_prompt: "使用 $social-life-journal，把我提供的微博主页、百度网盘或选定的本地相册整理成有图有故事的手帐；保留真实日期与原图，公开部署前先让我确认。"

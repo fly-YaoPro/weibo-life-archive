@@ -26,6 +26,8 @@ image-audit.json
 journal-data.js
 .private/
 photo-reading.json
+photo-authoring-index.json
+story-draft.json
 photo-index.html
 photo-import-receipt.json
 story-scaffold.json

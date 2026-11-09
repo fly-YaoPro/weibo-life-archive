@@ -64,7 +64,7 @@ class ReliabilityTests(unittest.TestCase):
         fixture(self.root);r=prepare(self.root,offline=True);self.assertEqual(validate_audio((self.root/r['bgm']['path']).read_bytes()),'wav')
         self.assertEqual(prepare(self.root,offline=True)['status'],'preserved')
         output=Path(self.temp.name)/'built';build(self.root,output,'paper');target=Path(self.temp.name)/'moved.html';pack(output,target)
-        self.assertTrue(verify_packed(target)['ok']);self.assertIn('data:audio/',target.read_text())
+        self.assertTrue(verify_packed(target)['ok']);self.assertIn('data:audio/',target.read_text(encoding='utf-8'))
         with self.assertRaises(ValueError):pack(output,target)
         with self.assertRaises(ValueError):validate_audio(b'<html>'+b'X'*2000)
 

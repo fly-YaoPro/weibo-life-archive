@@ -10,13 +10,13 @@ class PackageTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.base=Path(self.temp.name);self.root=self.base/'test-skill';self.root.mkdir()
         for directory in ['references','scripts','assets']:(self.root/directory).mkdir()
-        (self.root/'SKILL.md').write_text('---\nname: test-skill\ndescription: Synthetic\n---\n[Reference](references/new.md)\n')
-        (self.root/'README.md').write_text('synthetic test')
-        (self.root/'references/new.md').write_text('new guidance')
-        (self.root/'scripts/new.py').write_text('print(1)')
-        (self.root/'assets/new.js').write_text('const test=1;')
+        (self.root/'SKILL.md').write_text('---\nname: test-skill\ndescription: Synthetic\n---\n[Reference](references/new.md)\n',encoding='utf-8')
+        (self.root/'README.md').write_text('synthetic test',encoding='utf-8')
+        (self.root/'references/new.md').write_text('new guidance',encoding='utf-8')
+        (self.root/'scripts/new.py').write_text('print(1)',encoding='utf-8')
+        (self.root/'assets/new.js').write_text('const test=1;',encoding='utf-8')
         self.manifest={'version':'1.0.0','required_files':['SKILL.md','README.md','references/new.md','scripts/new.py','assets/new.js']}
-        (self.root/'skill_manifest.json').write_text(json.dumps(self.manifest))
+        (self.root/'skill_manifest.json').write_text(json.dumps(self.manifest),encoding='utf-8')
     def tearDown(self):self.temp.cleanup()
     def run_package(self):return package(self.root,self.base/'package.zip',self.base/'report.json')
     def test_resources_and_hashes_included_cache_excluded(self):
@@ -29,10 +29,10 @@ class PackageTests(unittest.TestCase):
         (self.root/'scripts/new.py').unlink()
         with self.assertRaises(ValueError):self.run_package()
     def test_credential_file_in_resource_tree_rejected(self):
-        (self.root/'scripts/.env').write_text('synthetic')
+        (self.root/'scripts/.env').write_text('synthetic',encoding='utf-8')
         with self.assertRaises(ValueError):self.run_package()
     def test_bad_link_rejected(self):
-        (self.root/'references/new.md').write_text('[missing](missing.md)')
+        (self.root/'references/new.md').write_text('[missing](missing.md)',encoding='utf-8')
         with self.assertRaises(ValueError):self.run_package()
 
 if __name__=='__main__':unittest.main()
