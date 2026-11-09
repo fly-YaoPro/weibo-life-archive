@@ -4,12 +4,12 @@
 
 <h1 align="center">社媒人生手帐</h1>
 <p align="center">从真实图文里，把熟悉的小事重新翻出来。</p>
-<p align="center"><strong>Agent Skill · v4.5.0-beta.2</strong> · 微博 · 百度网盘 · 本地相册</p>
+<p align="center"><strong>Agent Skill · v4.5.0</strong> · 微博 · 百度网盘 · 本地相册</p>
 <p align="center">
   <a href="#快速开始">快速开始</a> ·
   <a href="#视觉参考">视觉参考</a> ·
   <a href="SKILL.md">查看 Skill</a> ·
-  <a href="https://github.com/fly-YaoPro/weibo-life-archive/archive/refs/tags/v4.5.0-beta.2.zip">下载完整包</a>
+  <a href="https://github.com/fly-YaoPro/weibo-life-archive/archive/refs/tags/v4.5.0.zip">下载完整包</a>
 </p>
 
 > 完整流程：**采集或导入 → 补全图片 → 阅读与叙事 → 构建手账 → 核对首图点击 → 交付**。不要求先爬好数据，也不把示例账号当成你的账号。下方参考图是 AI 生成的虚构设计示意，不是真实账号或当前版本的运行截图。
@@ -160,9 +160,9 @@ python scripts/journal_run.py --source /工作区/source --output-root /工作�
 
 ## 版本与恢复
 
-默认分支 `main` 提供 v4.5.0-beta.2：统一三种入口，补本地 ZIP/图库边界、联系表与草稿、网盘有界重试，并修复路径别名及中文文件编码兼容问题。运行能力与验证边界见[数据源接入](references/photo-sourcing.md#能力依据与验证范围)。
+默认分支 `main` 提供 v4.5.0：统一三种入口，补本地 ZIP/图库边界、联系表与草稿、网盘有界重试，并修复路径别名及中文文件编码兼容问题。运行能力与验证边界见[数据源接入](references/photo-sourcing.md#能力依据与验证范围)。
 
-[本版固定版本：v4.5.0-beta.2](https://github.com/fly-YaoPro/weibo-life-archive/tree/v4.5.0-beta.2)
+[本版固定版本：v4.5.0](https://github.com/fly-YaoPro/weibo-life-archive/tree/v4.5.0)
 
 [升级前完整备份：v4.5.0-beta.1](https://github.com/fly-YaoPro/weibo-life-archive/tree/codex/backup-before-unified-sources-20261109)
 
